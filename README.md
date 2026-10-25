@@ -11,20 +11,26 @@ A tiny macOS menu-bar app for product demos: **hold the Command (⌘) key and a 
 ## Requirements
 
 - macOS 13 Ventura or later
-- Xcode 15+ or the Xcode Command Line Tools (`xcode-select --install`)
+- Xcode 16 or later to build
+
+## Download
+
+Notarized builds are on the [Releases](https://github.com/semicolonconsulting/demopointer/releases) page. Unzip, move **Demo Pointer** to Applications and open it.
 
 ## Build and run
+
+Open `DemoPointer.xcodeproj` in Xcode and run the **DemoPointer** scheme, or from the command line:
 
 ```sh
 ./scripts/build-app.sh
 open build/DemoPointer.app
 ```
 
-The script runs `swift build -c release`, wraps the binary in `build/DemoPointer.app` (menu-bar only, no Dock icon) and ad-hoc signs it. Move the app to `/Applications` if you want to keep it.
+The script builds the Release configuration with `xcodebuild`, signs it ad-hoc, and copies it to `build/DemoPointer.app` (menu bar only, no Dock icon). Move it to `/Applications` if you want to keep it.
 
-You can also open `Package.swift` in Xcode to edit and debug, but run the bundled `.app` for real use so macOS attributes the Screen Recording permission to Demo Pointer rather than to Xcode or Terminal.
+Every push also builds the app in GitHub Actions; the zipped `.app` is attached to the workflow run as the `DemoPointer` artifact.
 
-Every push also builds the app in GitHub Actions; the zipped `.app` is attached to the workflow run as the `DemoPointer` artifact. A downloaded build is unsigned for Gatekeeper, so the first time, right-click the app and choose **Open** (or run `xattr -dr com.apple.quarantine DemoPointer.app`).
+Releasing to GitHub (Developer ID, notarized) and the Mac App Store is described in [docs/RELEASING.md](docs/RELEASING.md). The app icon is drawn by `scripts/make-icon.swift` (`swift scripts/make-icon.swift` regenerates it).
 
 ## Permissions
 
@@ -40,7 +46,11 @@ Notes:
 
 - While the lens is in use, macOS shows its purple screen-recording indicator in the menu bar. Demo Pointer stops capturing 30 seconds after you last held ⌘, and the indicator goes away.
 - macOS 15 Sequoia and later periodically re-confirm Screen Recording access with a prompt. Choose **Allow**.
-- With the default ad-hoc signature, macOS may treat each rebuild as a new app and ask for permission again. To avoid that, sign with your own identity: `SIGN_IDENTITY="Apple Development: you@example.com" ./scripts/build-app.sh`. If the permission gets stuck, remove Demo Pointer from the list in System Settings and add it again, or run `tccutil reset ScreenCapture consulting.semicolon.DemoPointer`.
+- With the default ad-hoc signature, macOS treats each rebuild as a new app, and the Screen Recording switch you turned on stops working. To avoid that, sign with your own identity: `SIGN_IDENTITY="Apple Development" TEAM_ID=ABCDE12345 ./scripts/build-app.sh`. If the permission gets stuck, remove Demo Pointer from the list in System Settings and add it again, or run `tccutil reset ScreenCapture consulting.semicolon.DemoPointer`.
+
+## Privacy
+
+Demo Pointer is sandboxed, makes no network connections, and never saves or sends what it captures. See [PRIVACY.md](PRIVACY.md).
 
 ## How it works
 
