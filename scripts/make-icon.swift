@@ -1,138 +1,110 @@
-// Draws the app icon and writes every size into the AppIcon asset catalog.
+// Makes the app icon from art/icon-source.png (a 1254 px render of the glossy teal squircle with the
+// ring and pointing hand on a white background) and writes every size into the AppIcon asset catalog.
+// It cuts the squircle out along its traced edge, so the glass rim stays whole and the soft glow and
+// white background around it are dropped, then places it on Apple's icon grid (an 824 pt wide body on a
+// 1024 canvas) with a drop shadow.
 // Usage: swift scripts/make-icon.swift
 import AppKit
 
 let outputDir = URL(fileURLWithPath: "DemoPointer/Assets.xcassets/AppIcon.appiconset")
+/// Luminance between the pale glow outside the squircle (about 0.9) and its rim (about 0.5).
+let edgeThreshold: CGFloat = 0.7
+/// How far inside the traced edge the cut goes, in source pixels, so no glow fringe is left.
+let edgeInset: CGFloat = 0.6
 
-/// Draws the 1024×1024 master on the macOS icon grid (824pt body, 100pt margin).
-func drawIcon(in ctx: CGContext) {
-    let body = CGRect(x: 100, y: 100, width: 824, height: 824)
-    let bodyPath = CGPath(roundedRect: body, cornerWidth: 185, cornerHeight: 185, transform: nil)
+let source = NSBitmapImageRep(data: try! Data(contentsOf: URL(fileURLWithPath: "art/icon-source.png")))!.cgImage!
 
-    // Drop shadow under the body.
-    ctx.saveGState()
-    ctx.setShadow(offset: CGSize(width: 0, height: -12), blur: 28, color: NSColor.black.withAlphaComponent(0.35).cgColor)
-    ctx.addPath(bodyPath)
-    ctx.setFillColor(NSColor.black.cgColor)
-    ctx.fillPath()
-    ctx.restoreGState()
+/// Luminance of every source pixel, row 0 at the top.
+let luminance: [[CGFloat]] = {
+    let width = source.width, height = source.height
+    let ctx = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4,
+                        space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)!
+    ctx.draw(source, in: CGRect(x: 0, y: 0, width: width, height: height))
+    let p = ctx.data!.assumingMemoryBound(to: UInt8.self)
+    return (0..<height).map { y in
+        (0..<width).map { x in
+            let i = (y * width + x) * 4
+            return (0.3 * CGFloat(p[i]) + 0.59 * CGFloat(p[i + 1]) + 0.11 * CGFloat(p[i + 2])) / 255
+        }
+    }
+}()
 
-    // Teal background, the same gradient as desktopcloth's icon: blue-teal at the top to green-teal at the bottom.
-    ctx.saveGState()
-    ctx.addPath(bodyPath)
-    ctx.clip()
-    let colors = [
-        NSColor(srgbRed: 0.25, green: 0.72, blue: 0.81, alpha: 1).cgColor,
-        NSColor(srgbRed: 0.11, green: 0.78, blue: 0.68, alpha: 1).cgColor,
-    ] as CFArray
-    let gradient = CGGradient(colorsSpace: CGColorSpace(name: CGColorSpace.sRGB), colors: colors, locations: [0, 1])!
-    ctx.drawLinearGradient(gradient, start: CGPoint(x: 512, y: body.maxY), end: CGPoint(x: 512, y: body.minY), options: [])
-    ctx.restoreGState()
-
-    // A dark teal lens with a white rim, and an old-style engraved pointing hand (a manicule) with
-    // a shirt cuff, its index finger pointing up. Drawn by hand: SF Symbols may not be used in app icons.
-    let lensCenter = CGPoint(x: 512, y: 560)
-    let lensRadius: CGFloat = 300
-    let lens = CGRect(x: lensCenter.x - lensRadius, y: lensCenter.y - lensRadius, width: lensRadius * 2, height: lensRadius * 2)
-    ctx.saveGState()
-    ctx.setShadow(offset: CGSize(width: 0, height: -10), blur: 24, color: NSColor.black.withAlphaComponent(0.3).cgColor)
-    ctx.setFillColor(NSColor(srgbRed: 0.06, green: 0.40, blue: 0.42, alpha: 1).cgColor)
-    ctx.fillEllipse(in: lens)
-    ctx.restoreGState()
-    ctx.setStrokeColor(NSColor.white.cgColor)
-    ctx.setLineWidth(22)
-    ctx.strokeEllipse(in: lens.insetBy(dx: 11, dy: 11))
-
-    ctx.saveGState()
-    ctx.addPath(bodyPath)
-    ctx.clip()
-    // The hand is laid out on a canvas with a top-left origin.
-    ctx.translateBy(x: 0, y: 1024)
-    ctx.scaleBy(x: 1, y: -1)
-    ctx.setShadow(offset: CGSize(width: 0, height: 10), blur: 20, color: NSColor.black.withAlphaComponent(0.35).cgColor)
-    ctx.beginTransparencyLayer(auxiliaryInfo: nil)
-    drawManicule(in: ctx)
-    ctx.endTransparencyLayer()
-    ctx.restoreGState()
+/// Scans from outside inward along one line of luminance values and returns where it first crosses
+/// the threshold, as a sub-pixel position measured from the scan's start, or nil if it never does.
+func edge(_ values: [CGFloat]) -> CGFloat? {
+    for i in 1..<values.count where values[i] < edgeThreshold && values[i - 1] >= edgeThreshold {
+        let t = (values[i - 1] - edgeThreshold) / (values[i - 1] - values[i])
+        return CGFloat(i - 1) + t + 0.5
+    }
+    return nil
 }
 
-/// Draws the pointing hand on a 1024 canvas with a top-left origin: ink outlines on white, with
-/// engraving-style hatching on the shaded right side.
-func drawManicule(in ctx: CGContext) {
-    let ink = NSColor(srgbRed: 0.10, green: 0.12, blue: 0.13, alpha: 1).cgColor
-    let paper = NSColor(srgbRed: 1, green: 0.99, blue: 0.96, alpha: 1).cgColor
-
-    func shape(_ path: CGPath, hatch: CGRect? = nil, line: CGFloat = 11) {
-        ctx.addPath(path)
-        ctx.setFillColor(paper)
-        ctx.fillPath()
-        if let hatch {
-            ctx.saveGState()
-            ctx.addPath(path)
-            ctx.clip()
-            ctx.setStrokeColor(ink)
-            ctx.setLineWidth(5)
-            ctx.setLineCap(.round)
-            var x = hatch.minX
-            while x < hatch.maxX {
-                ctx.move(to: CGPoint(x: x, y: hatch.minY))
-                ctx.addLine(to: CGPoint(x: x - 40, y: hatch.maxY))
-                x += 16
-            }
-            ctx.strokePath()
-            ctx.restoreGState()
+/// The cut-out mask: each pixel's coverage inside the traced edge, both across its row and down its
+/// column, so straight sides and corners are all anti-aliased.
+let mask: CGImage = {
+    let width = source.width, height = source.height
+    var rows = [(CGFloat, CGFloat)?](repeating: nil, count: height)
+    for y in 0..<height {
+        let line = luminance[y]
+        // Only lines that cross the squircle: its middle stays dark all the way.
+        guard let left = edge(line), let fromRight = edge(line.reversed()) else { continue }
+        rows[y] = (left + edgeInset, CGFloat(width) - fromRight - edgeInset)
+    }
+    var columns = [(CGFloat, CGFloat)?](repeating: nil, count: width)
+    for x in 0..<width {
+        let line = (0..<height).map { luminance[$0][x] }
+        guard let top = edge(line), let fromBottom = edge(line.reversed()) else { continue }
+        columns[x] = (top + edgeInset, CGFloat(height) - fromBottom - edgeInset)
+    }
+    let ctx = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width,
+                        space: CGColorSpaceCreateDeviceGray(), bitmapInfo: CGImageAlphaInfo.none.rawValue)!
+    let out = ctx.data!.assumingMemoryBound(to: UInt8.self)
+    func coverage(_ center: CGFloat, _ span: (CGFloat, CGFloat)?) -> CGFloat {
+        guard let (start, end) = span, end > start else { return 0 }
+        return min(max(center - start + 0.5, 0), 1) * min(max(end - center + 0.5, 0), 1)
+    }
+    for y in 0..<height {
+        for x in 0..<width {
+            let c = min(coverage(CGFloat(x) + 0.5, rows[y]), coverage(CGFloat(y) + 0.5, columns[x]))
+            out[y * width + x] = UInt8(c * 255)
         }
-        ctx.addPath(path)
-        ctx.setStrokeColor(ink)
-        ctx.setLineWidth(line)
-        ctx.setLineJoin(.round)
-        ctx.strokePath()
     }
+    return ctx.makeImage()!
+}()
 
-    // The shapes below are laid out around (540, 530); the finger sits inside the lens and the cuff overlaps its rim.
-    ctx.translateBy(x: 512, y: 530)
-    ctx.scaleBy(x: 1.08, y: 1.08)
-    ctx.translateBy(x: -540, y: -530)
+/// The squircle's bounds in the source, from the mask.
+let sourceBody: CGRect = {
+    let width = source.width, height = source.height
+    let ctx = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width,
+                        space: CGColorSpaceCreateDeviceGray(), bitmapInfo: CGImageAlphaInfo.none.rawValue)!
+    ctx.draw(mask, in: CGRect(x: 0, y: 0, width: width, height: height))
+    let p = ctx.data!.assumingMemoryBound(to: UInt8.self)
+    var minX = width, maxX = 0, minY = height, maxY = 0
+    for y in 0..<height { for x in 0..<width where p[y * width + x] > 127 {
+        minX = min(minX, x); maxX = max(maxX, x); minY = min(minY, y); maxY = max(maxY, y)
+    } }
+    return CGRect(x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1)
+}()
 
-    func rounded(_ rect: CGRect, _ radius: CGFloat, rotation: CGFloat = 0) -> CGPath {
-        let center = CGPoint(x: rect.midX, y: rect.midY)
-        var transform = CGAffineTransform(translationX: center.x, y: center.y).rotated(by: rotation).translatedBy(x: -center.x, y: -center.y)
-        return CGPath(roundedRect: rect, cornerWidth: radius, cornerHeight: radius, transform: &transform)
-    }
+/// Draws the 1024×1024 master. Coordinates have a top-left origin.
+func drawIcon(in ctx: CGContext) {
+    // 824 pt wide like every macOS icon body, centered.
+    let scale = 824 / sourceBody.width
+    let body = CGRect(x: 100, y: 512 - sourceBody.height * scale / 2, width: 824, height: sourceBody.height * scale)
+    let imageRect = CGRect(x: body.minX - sourceBody.minX * scale, y: body.minY - sourceBody.minY * scale,
+                           width: CGFloat(source.width) * scale, height: CGFloat(source.height) * scale)
 
-    // Back of the hand and wrist, behind everything else.
-    shape(rounded(CGRect(x: 438, y: 470, width: 200, height: 260), 70), hatch: CGRect(x: 590, y: 470, width: 70, height: 260))
-    // Index finger, pointing up.
-    shape(rounded(CGRect(x: 462, y: 236, width: 78, height: 300), 39), hatch: CGRect(x: 528, y: 300, width: 30, height: 240))
-    // Fingernail and knuckle creases.
-    ctx.setStrokeColor(ink)
-    ctx.setLineWidth(6)
-    ctx.addPath(rounded(CGRect(x: 484, y: 252, width: 34, height: 52), 17))
-    ctx.move(to: CGPoint(x: 478, y: 378)); ctx.addQuadCurve(to: CGPoint(x: 524, y: 378), control: CGPoint(x: 501, y: 390))
-    ctx.move(to: CGPoint(x: 480, y: 398)); ctx.addQuadCurve(to: CGPoint(x: 522, y: 398), control: CGPoint(x: 501, y: 408))
-    ctx.strokePath()
-    // Three curled fingers, stacked down the right.
-    shape(rounded(CGRect(x: 520, y: 470, width: 140, height: 72), 36), hatch: CGRect(x: 620, y: 470, width: 60, height: 72))
-    shape(rounded(CGRect(x: 520, y: 536, width: 146, height: 72), 36), hatch: CGRect(x: 626, y: 536, width: 60, height: 72))
-    shape(rounded(CGRect(x: 516, y: 602, width: 136, height: 70), 35), hatch: CGRect(x: 612, y: 602, width: 60, height: 70))
-    // Thumb, folded across the curled fingers.
-    shape(rounded(CGRect(x: 412, y: 540, width: 190, height: 70), 35, rotation: -0.35))
-    // Shirt cuff with a button.
-    let cuff = CGMutablePath()
-    cuff.move(to: CGPoint(x: 434, y: 706))
-    cuff.addLine(to: CGPoint(x: 650, y: 706))
-    cuff.addLine(to: CGPoint(x: 660, y: 822))
-    cuff.addLine(to: CGPoint(x: 424, y: 822))
-    cuff.closeSubpath()
-    shape(cuff, hatch: CGRect(x: 618, y: 706, width: 60, height: 116))
-    ctx.setStrokeColor(ink)
-    ctx.setLineWidth(6)
-    ctx.move(to: CGPoint(x: 432, y: 734)); ctx.addLine(to: CGPoint(x: 652, y: 734))
-    ctx.move(to: CGPoint(x: 427, y: 796)); ctx.addLine(to: CGPoint(x: 657, y: 796))
-    ctx.strokePath()
-    ctx.setFillColor(paper)
-    ctx.fillEllipse(in: CGRect(x: 582, y: 748, width: 32, height: 32))
-    ctx.strokeEllipse(in: CGRect(x: 582, y: 748, width: 32, height: 32))
+    ctx.setShadow(offset: CGSize(width: 0, height: 12), blur: 28, color: NSColor.black.withAlphaComponent(0.28).cgColor)
+    ctx.beginTransparencyLayer(auxiliaryInfo: nil)
+    // CGImages draw bottom-up, so flip locally on this top-left canvas.
+    ctx.saveGState()
+    ctx.translateBy(x: imageRect.minX, y: imageRect.maxY)
+    ctx.scaleBy(x: 1, y: -1)
+    ctx.interpolationQuality = .high
+    ctx.clip(to: CGRect(origin: .zero, size: imageRect.size), mask: mask)
+    ctx.draw(source, in: CGRect(origin: .zero, size: imageRect.size))
+    ctx.restoreGState()
+    ctx.endTransparencyLayer()
 }
 
 func render(pixels: Int) -> Data {
@@ -142,11 +114,14 @@ func render(pixels: Int) -> Data {
     let ctx = NSGraphicsContext(bitmapImageRep: rep)!
     ctx.imageInterpolation = .high
     let cg = ctx.cgContext
-    cg.scaleBy(x: CGFloat(pixels) / 1024, y: CGFloat(pixels) / 1024)
+    // Top-left origin, 1024 units across.
+    cg.translateBy(x: 0, y: CGFloat(pixels))
+    cg.scaleBy(x: CGFloat(pixels) / 1024, y: -CGFloat(pixels) / 1024)
     drawIcon(in: cg)
     return rep.representation(using: .png, properties: [:])!
 }
 
+print("Squircle in the source: \(sourceBody)")
 var images: [[String: String]] = []
 for points in [16, 32, 128, 256, 512] {
     for scale in [1, 2] {
