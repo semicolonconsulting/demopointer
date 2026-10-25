@@ -44,7 +44,7 @@ final class Settings {
 
     /// Opacity of the shade over the rest of the screen; 0 is off.
     var shadeOpacity: Double {
-        get { defaults.object(forKey: "shadeOpacity") as? Double ?? 0.45 }
+        get { defaults.object(forKey: "shadeOpacity") as? Double ?? 0.25 }
         set { defaults.set(newValue, forKey: "shadeOpacity") }
     }
 }

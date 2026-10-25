@@ -55,7 +55,7 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
     private func update() {
         zoomPopUp.selectItem(at: Settings.zoomLevels.firstIndex(of: settings.zoom) ?? 1)
         sizePopUp.selectItem(at: Settings.sizes.firstIndex { $0.diameter == settings.diameter } ?? 1)
-        shadePopUp.selectItem(at: Settings.shades.firstIndex { $0.opacity == settings.shadeOpacity } ?? 2)
+        shadePopUp.selectItem(at: Settings.shades.firstIndex { $0.opacity == settings.shadeOpacity } ?? 1)
         loginBox.state = LoginItem.isEnabled ? .on : .off
         #if !APPSTORE
         updatesBox.state = Updates.checksAutomatically ? .on : .off
