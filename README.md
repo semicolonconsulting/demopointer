@@ -57,3 +57,7 @@ Demo Pointer is sandboxed, makes no network connections, and never saves or send
 - `MagnifierController` polls `NSEvent.modifierFlags` and `NSEvent.mouseLocation` 60 times a second. While ⌘ is held it crops the area under the cursor from the latest captured frame and hands it to the lens.
 - `ScreenCapturer` runs an `SCStream` of the display under the cursor, excluding Demo Pointer's own windows so the lens never magnifies itself.
 - `LensWindow` is a borderless, transparent, click-through window above everything else (including full-screen apps) that draws the circular lens with a white ring and shadow. The real cursor stays visible on top at the lens center.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
