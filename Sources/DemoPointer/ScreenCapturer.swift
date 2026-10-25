@@ -48,23 +48,32 @@ final class ScreenCapturer: NSObject, SCStreamOutput, SCStreamDelegate {
         let stream = SCStream(filter: filter, configuration: config, delegate: self)
         try stream.addStreamOutput(self, type: .screen, sampleHandlerQueue: sampleQueue)
 
-        lock.lock()
-        currentDisplayID = displayID
-        lock.unlock()
+        setCurrentDisplay(displayID)
 
         try await stream.startCapture()
         self.stream = stream
     }
 
     func stop() async {
-        lock.lock()
-        latest = nil
-        currentDisplayID = nil
-        lock.unlock()
+        resetFrames()
 
         guard let stream else { return }
         self.stream = nil
         try? await stream.stopCapture()
+    }
+
+    // NSLock can't be used directly from async functions, so these wrap it synchronously.
+    private func resetFrames() {
+        lock.lock()
+        latest = nil
+        currentDisplayID = nil
+        lock.unlock()
+    }
+
+    private func setCurrentDisplay(_ displayID: CGDirectDisplayID) {
+        lock.lock()
+        currentDisplayID = displayID
+        lock.unlock()
     }
 
     // MARK: SCStreamOutput
