@@ -10,6 +10,7 @@
 		D0000000000000000000A001 /* DemoPointer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DemoPointer.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D0000000000000000000A002 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		D0000000000000000000A003 /* DemoPointer.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = DemoPointer.entitlements; sourceTree = "<group>"; };
+		D0000000000000000000A004 /* DemoPointer-AppStore.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "DemoPointer-AppStore.entitlements"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -53,6 +54,7 @@
 			children = (
 				D0000000000000000000A002 /* Info.plist */,
 				D0000000000000000000A003 /* DemoPointer.entitlements */,
+				D0000000000000000000A004 /* DemoPointer-AppStore.entitlements */,
 			);
 			path = Config;
 			sourceTree = "<group>";
@@ -193,7 +195,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 0.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = consulting.semicolon.DemoPointer;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
@@ -218,7 +220,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 0.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = consulting.semicolon.DemoPointer;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;

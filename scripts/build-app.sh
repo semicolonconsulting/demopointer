@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Builds DemoPointer.app into ./build for local use. Needs Xcode 16 or later.
+# Builds DemoPointer.app into ./build for local use, plus build/DemoPointer-<version>.dmg.
+# Needs Xcode 16 or later. Set NO_DMG=1 to skip the disk image.
 #
 # Signs ad-hoc by default. macOS ties the Screen Recording permission to the signature, so an
 # ad-hoc build loses the permission on every rebuild. Set SIGN_IDENTITY (and TEAM_ID) to an
@@ -28,3 +29,8 @@ APP="$DERIVED/Build/Products/$CONFIG/DemoPointer.app"
 rm -rf build/DemoPointer.app
 ditto "$APP" build/DemoPointer.app
 echo "Built build/DemoPointer.app"
+
+if [[ "${NO_DMG:-}" != "1" ]]; then
+    VERSION=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" build/DemoPointer.app/Contents/Info.plist)
+    ./scripts/make-dmg.sh build/DemoPointer.app "build/DemoPointer-$VERSION.dmg"
+fi

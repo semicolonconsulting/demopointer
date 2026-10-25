@@ -35,3 +35,10 @@ final class Settings {
         set { defaults.set(newValue, forKey: "diameter") }
     }
 }
+
+extension Settings {
+    /// "2×", "1.5×".
+    static func format(zoom: Double) -> String {
+        zoom == zoom.rounded() ? "\(Int(zoom))×" : "\(zoom)×"
+    }
+}

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Builds a Developer ID signed, notarized and stapled DemoPointer.zip for GitHub Releases.
+# Builds a Developer ID signed, notarized and stapled DemoPointer-<version>.dmg for GitHub Releases.
+# Check for Updates in the app looks for the .dmg asset on the latest release.
 #
 # Needs:
 #   TEAM_ID         Apple Developer team ID
@@ -39,19 +40,20 @@ APP="$OUT/DemoPointer.app"
 ditto "$DERIVED/Build/Products/Release/DemoPointer.app" "$APP"
 codesign --verify --strict --verbose=2 "$APP"
 
-ZIP="$OUT/DemoPointer.zip"
-ditto -c -k --keepParent "$APP" "$ZIP"
+VERSION=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" "$APP/Contents/Info.plist")
+DMG="$OUT/DemoPointer-$VERSION.dmg"
+./scripts/make-dmg.sh "$APP" "$DMG"
+codesign --force --sign "Developer ID Application" --timestamp "$DMG"
 
+# Notarizing the DMG also notarizes the app inside it.
 if [[ -n "${NOTARY_PROFILE:-}" ]]; then
-    xcrun notarytool submit "$ZIP" --keychain-profile "$NOTARY_PROFILE" --wait
+    xcrun notarytool submit "$DMG" --keychain-profile "$NOTARY_PROFILE" --wait
 else
     : "${ASC_KEY_PATH:?Set NOTARY_PROFILE or ASC_KEY_PATH/ASC_KEY_ID/ASC_ISSUER_ID}"
-    xcrun notarytool submit "$ZIP" --key "$ASC_KEY_PATH" --key-id "$ASC_KEY_ID" --issuer "$ASC_ISSUER_ID" --wait
+    xcrun notarytool submit "$DMG" --key "$ASC_KEY_PATH" --key-id "$ASC_KEY_ID" --issuer "$ASC_ISSUER_ID" --wait
 fi
 
-# Staple the ticket to the app so it opens offline, then re-zip the stapled app.
-xcrun stapler staple "$APP"
-rm "$ZIP"
-ditto -c -k --keepParent "$APP" "$ZIP"
-spctl --assess --type execute --verbose "$APP"
-echo "Notarized $ZIP"
+# Staple the ticket so the DMG opens without a network check.
+xcrun stapler staple "$DMG"
+spctl --assess --type open --context context:primary-signature --verbose "$DMG"
+echo "Notarized $DMG"

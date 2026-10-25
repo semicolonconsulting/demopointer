@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 # Archives DemoPointer and uploads it to App Store Connect.
+# The App Store build is compiled with APPSTORE, which leaves out Check for Updates (the App Store
+# updates the app), and signed with DemoPointer-AppStore.entitlements, which has no network access.
 #
 # Needs:
 #   TEAM_ID         Apple Developer team ID
@@ -37,6 +39,8 @@ xcodebuild archive \
     -allowProvisioningUpdates \
     ${auth_args[@]+"${auth_args[@]}"} \
     DEVELOPMENT_TEAM="$TEAM_ID" \
+    SWIFT_ACTIVE_COMPILATION_CONDITIONS='$(inherited) APPSTORE' \
+    CODE_SIGN_ENTITLEMENTS=Config/DemoPointer-AppStore.entitlements \
     CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
     ${version_args[@]+"${version_args[@]}"}
 

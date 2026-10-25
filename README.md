@@ -1,11 +1,14 @@
 # Demo Pointer
 
-A tiny macOS menu-bar app for product demos: **hold the Command (⌘) key and a magnifying lens follows your cursor.** Let go and it disappears.
+A tiny macOS menu-bar app for product demos: **hold the Command (⌘) key and a magnifying lens follows your cursor.** Let go and it fades away.
 
 - Lens is a real-time zoom of the screen under the cursor (ScreenCaptureKit, up to 60 fps).
 - Shows up in screen shares and recordings (Zoom, Meet, QuickTime), so your audience sees it too.
 - Only triggers on plain ⌘. ⌘ combined with Shift, Option or Control is ignored, so shortcuts like ⌘⇧4 don't pop the lens. (A quick ⌘C will flash it briefly.)
 - Menu-bar icon lets you toggle it, pick zoom (1.5×, 2×, 3×, 4×) and lens size (small, medium, large). Settings are remembered.
+- A welcome window on first launch explains how to use it and how to allow Screen Recording. It's also **Settings…** in the menu.
+- **Open at Login** is on by default. Turn it off in Settings or the menu.
+- **Check for Updates** asks GitHub for the latest release and offers to download it. It also checks automatically about once a day; turn off **Check for Updates Automatically** in Settings or the menu. (GitHub version only: the App Store version is updated by the App Store.)
 - Works on multiple displays; the lens follows the display the cursor is on.
 
 ## Requirements
@@ -15,7 +18,7 @@ A tiny macOS menu-bar app for product demos: **hold the Command (⌘) key and a 
 
 ## Download
 
-Notarized builds are on the [Releases](https://github.com/semicolonconsulting/demopointer/releases) page. Unzip, move **Demo Pointer** to Applications and open it.
+Notarized builds are on the [Releases](https://github.com/semicolonconsulting/demopointer/releases) page. Open `DemoPointer-<version>.dmg`, drag **DemoPointer** onto **Applications**, then open it from Applications.
 
 ## Build and run
 
@@ -23,10 +26,10 @@ Open `DemoPointer.xcodeproj` in Xcode and run the **DemoPointer** scheme, or fro
 
 ```sh
 ./scripts/build-app.sh
-open build/DemoPointer.app
+open build/DemoPointer-*.dmg
 ```
 
-The script builds the Release configuration with `xcodebuild`, signs it ad-hoc, and copies it to `build/DemoPointer.app` (menu bar only, no Dock icon). Move it to `/Applications` if you want to keep it.
+The script builds the Release configuration with `xcodebuild`, signs it ad-hoc, copies it to `build/DemoPointer.app` (menu bar only, no Dock icon) and packs it into `build/DemoPointer-<version>.dmg` with `scripts/make-dmg.sh`. Laying out the DMG window uses Finder, so the first run asks to let your terminal control Finder; set `NO_DMG=1` to skip the DMG.
 
 Every push also builds the app in GitHub Actions; the zipped `.app` is attached to the workflow run as the `DemoPointer` artifact.
 
@@ -50,7 +53,7 @@ Notes:
 
 ## Privacy
 
-Demo Pointer is sandboxed, makes no network connections, and never saves or sends what it captures. See [PRIVACY.md](PRIVACY.md).
+Demo Pointer is sandboxed and never saves or sends what it captures. Its only network access is Check for Updates in the GitHub version, which asks GitHub for the latest release. The App Store version has no network access. See [PRIVACY.md](PRIVACY.md).
 
 ## How it works
 

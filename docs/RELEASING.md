@@ -4,10 +4,15 @@ Demo Pointer ships two ways from the same Xcode project:
 
 | Channel | Signing | How |
 | --- | --- | --- |
-| GitHub Releases | Developer ID, notarized | `scripts/release-github.sh`, or push a `v*` tag (`.github/workflows/release.yml`) |
+| GitHub Releases (DMG) | Developer ID, notarized | `scripts/release-github.sh`, or push a `v*` tag (`.github/workflows/release.yml`) |
 | Mac App Store | Apple Distribution | `scripts/release-appstore.sh`, or Xcode › Product › Archive |
 
-Both builds are sandboxed with the same entitlements (`Config/DemoPointer.entitlements`).
+Both builds are sandboxed. They differ in one way:
+
+- **GitHub** (`Config/DemoPointer.entitlements`): adds outgoing network access for Check for Updates (`DemoPointer/Updates.swift`), which reads the latest GitHub release and offers its `.dmg`. Every release must attach `DemoPointer-<version>.dmg` and be tagged `v<version>`.
+- **App Store** (`Config/DemoPointer-AppStore.entitlements`, Swift condition `APPSTORE`): no network access and no updater, since the App Store updates the app and store apps may not update themselves.
+
+Open at Login is on by default (registered on first launch from an Applications folder). App Review guideline 2.4.5(iii) says Mac apps must not launch at login without consent. If review objects, make the App Store build default to off; the checkbox in the welcome window stays.
 
 ## One-time setup
 
@@ -37,7 +42,7 @@ Locally:
 ```sh
 xcrun notarytool store-credentials demopointer-notary   # once; uses an app-specific password or API key
 TEAM_ID=ABCDE12345 NOTARY_PROFILE=demopointer-notary VERSION=1.0.0 ./scripts/release-github.sh
-gh release create v1.0.0 build/release/DemoPointer.zip --generate-notes
+gh release create v1.0.0 build/release/DemoPointer-1.0.0.dmg --generate-notes
 ```
 
 From CI: add these repository secrets, then push a tag (`git tag v1.0.0 && git push origin v1.0.0`).
@@ -74,4 +79,5 @@ From CI: add these repository secrets, then push a tag (`git tag v1.0.0 && git p
 - [ ] Build and test the sandboxed app on the oldest supported macOS (13) and the newest.
 - [ ] Hold ⌘ over each display, change zoom and size, and confirm the lens does not magnify itself.
 - [ ] Revoke Screen Recording and confirm the app explains how to grant it.
-- [ ] Bump `VERSION`, tag, release.
+- [ ] Open the DMG and check the install window, then install from it and check the welcome window.
+- [ ] Bump `VERSION`, tag, release. The release notes' first paragraph is shown in the in-app update alert.

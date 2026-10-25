@@ -1,0 +1,50 @@
+Demo Pointer
+============
+
+A menu bar app for product demos: hold the Command key by itself and
+a magnifying lens follows your pointer. Let go and it fades away.
+The lens shows up in screen shares and recordings too.
+
+Requires macOS 13 or later.
+
+
+Install
+-------
+1. Drag "DemoPointer" onto the "Applications" folder in this window.
+2. Eject this disk image.
+3. Open Demo Pointer from the Applications folder.
+
+The first time it opens, a welcome window explains how to use it.
+Demo Pointer opens at login by default; turn that off in the welcome
+window (Settings) or in the menu bar icon's menu.
+
+
+Allow Screen Recording
+----------------------
+Demo Pointer needs Screen Recording permission to draw the lens.
+
+1. When macOS asks, click Open System Settings. (Or open System
+   Settings > Privacy & Security > Screen & System Audio Recording.)
+2. Turn on Demo Pointer.
+3. Click "Reopen Demo Pointer" in the welcome window, or quit it from
+   the menu bar icon and open it again.
+
+Demo Pointer never saves or sends what it captures.
+
+
+If macOS says it can't verify the app
+-------------------------------------
+Builds from GitHub Releases are notarized by Apple and open normally.
+If you built or received a copy that isn't, open System Settings >
+Privacy & Security, scroll down to the message about Demo Pointer and
+click Open Anyway. Or run this in Terminal after copying the app:
+
+    xattr -dr com.apple.quarantine /Applications/DemoPointer.app
+
+
+Updates
+-------
+Demo Pointer checks GitHub for new versions about once a day and
+offers to download them. Turn off "Check for Updates Automatically"
+in Settings or the menu to stop that, or choose "Check for Updates…"
+any time.

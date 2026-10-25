@@ -1,46 +1,58 @@
 import AppKit
 
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let settings = Settings.shared
     private let magnifier = MagnifierController()
+    private let settingsWindow = SettingsWindow()
     private var statusItem: NSStatusItem!
-    private var didShowPermissionAlert = false
+    private var didShowPermissionHelp = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         statusItem.button?.image = NSImage(systemSymbolName: "magnifyingglass.circle", accessibilityDescription: "Demo Pointer")
-        rebuildMenu()
+        let menu = NSMenu()
+        menu.delegate = self
+        statusItem.menu = menu
+
+        LoginItem.applyDefaultIfNeeded()
 
         if !CGPreflightScreenCaptureAccess() {
-            // Shows the system prompt the first time; afterwards the user grants it in System Settings.
+            // Shows the system prompt the first time and adds Demo Pointer to the list in System Settings.
             _ = CGRequestScreenCaptureAccess()
+        }
+        if !UserDefaults.standard.bool(forKey: "welcomed") {
+            settingsWindow.show(title: "Welcome to Demo Pointer")
+            didShowPermissionHelp = true
         }
 
         magnifier.onCaptureFailure = { [weak self] _ in
-            self?.showPermissionAlertIfNeeded()
+            self?.showPermissionHelpIfNeeded()
         }
         magnifier.start()
+
+        #if !APPSTORE
+        Updates.startAutomaticChecks()
+        #endif
     }
 
     // MARK: Menu
 
-    private func rebuildMenu() {
-        let menu = NSMenu()
+    /// Rebuilt each time it opens, so it reflects changes made in the Settings window or System Settings.
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        menu.removeAllItems()
 
-        let enabled = NSMenuItem(title: "Magnify While Holding ⌘", action: #selector(toggleEnabled), keyEquivalent: "")
-        enabled.target = self
-        enabled.state = settings.isEnabled ? .on : .off
-        menu.addItem(enabled)
+        menu.addItem(item("Settings…", #selector(showSettings), key: ","))
+        menu.addItem(.separator())
+
+        menu.addItem(item("Magnify While Holding ⌘", #selector(toggleEnabled), on: settings.isEnabled))
         menu.addItem(.separator())
 
         let zoomMenu = NSMenu()
         for level in Settings.zoomLevels {
-            let item = NSMenuItem(title: Self.format(zoom: level), action: #selector(selectZoom(_:)), keyEquivalent: "")
-            item.target = self
-            item.representedObject = level
-            item.state = level == settings.zoom ? .on : .off
-            zoomMenu.addItem(item)
+            let zoomItem = item(Settings.format(zoom: level), #selector(selectZoom(_:)), on: level == settings.zoom)
+            zoomItem.representedObject = level
+            zoomMenu.addItem(zoomItem)
         }
         let zoomItem = NSMenuItem(title: "Zoom", action: nil, keyEquivalent: "")
         zoomItem.submenu = zoomMenu
@@ -48,68 +60,63 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let sizeMenu = NSMenu()
         for size in Settings.sizes {
-            let item = NSMenuItem(title: size.name, action: #selector(selectSize(_:)), keyEquivalent: "")
-            item.target = self
-            item.representedObject = size.diameter
-            item.state = size.diameter == settings.diameter ? .on : .off
-            sizeMenu.addItem(item)
+            let sizeItem = item(size.name, #selector(selectSize(_:)), on: size.diameter == settings.diameter)
+            sizeItem.representedObject = size.diameter
+            sizeMenu.addItem(sizeItem)
         }
         let sizeItem = NSMenuItem(title: "Lens Size", action: nil, keyEquivalent: "")
         sizeItem.submenu = sizeMenu
         menu.addItem(sizeItem)
 
         menu.addItem(.separator())
-        let permission = NSMenuItem(title: "Screen Recording Settings…", action: #selector(openScreenRecordingSettings), keyEquivalent: "")
-        permission.target = self
-        menu.addItem(permission)
+        menu.addItem(item("Open at Login", #selector(toggleOpenAtLogin), on: LoginItem.isEnabled))
+        #if !APPSTORE
+        menu.addItem(item("Check for Updates Automatically", #selector(toggleAutomaticUpdates), on: Updates.checksAutomatically))
+        menu.addItem(item("Check for Updates…", #selector(checkForUpdates)))
+        #endif
 
         menu.addItem(.separator())
+        menu.addItem(item("Screen Recording Settings…", #selector(openScreenRecordingSettings)))
+        menu.addItem(item("Privacy Policy", #selector(openPrivacyPolicy)))
+        menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Quit Demo Pointer", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
-
-        statusItem.menu = menu
     }
 
-    private static func format(zoom: Double) -> String {
-        zoom == zoom.rounded() ? "\(Int(zoom))×" : "\(zoom)×"
+    private func item(_ title: String, _ action: Selector, key: String = "", on: Bool = false) -> NSMenuItem {
+        let item = NSMenuItem(title: title, action: action, keyEquivalent: key)
+        item.target = self
+        item.state = on ? .on : .off
+        return item
     }
 
-    @objc private func toggleEnabled() {
-        settings.isEnabled.toggle()
-        rebuildMenu()
-    }
+    @objc private func showSettings() { settingsWindow.show() }
+    @objc private func toggleEnabled() { settings.isEnabled.toggle() }
+    @objc private func toggleOpenAtLogin() { LoginItem.set(!LoginItem.isEnabled) }
+    @objc private func openScreenRecordingSettings() { SettingsWindow.openScreenRecordingSettings() }
+    @objc private func openPrivacyPolicy() { NSWorkspace.shared.open(privacyPolicyURL) }
+
+    #if !APPSTORE
+    @objc private func checkForUpdates() { Updates.check(userInitiated: true) }
+    @objc private func toggleAutomaticUpdates() { Updates.checksAutomatically.toggle() }
+    #endif
 
     @objc private func selectZoom(_ sender: NSMenuItem) {
         guard let level = sender.representedObject as? Double else { return }
         settings.zoom = level
-        rebuildMenu()
     }
 
     @objc private func selectSize(_ sender: NSMenuItem) {
         guard let diameter = sender.representedObject as? Double else { return }
         settings.diameter = diameter
-        rebuildMenu()
-    }
-
-    @objc private func openScreenRecordingSettings() {
-        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture") {
-            NSWorkspace.shared.open(url)
-        }
     }
 
     // MARK: Permission
 
-    private func showPermissionAlertIfNeeded() {
-        guard !didShowPermissionAlert, !CGPreflightScreenCaptureAccess() else { return }
-        didShowPermissionAlert = true
-
-        NSApp.activate(ignoringOtherApps: true)
-        let alert = NSAlert()
-        alert.messageText = "Demo Pointer needs Screen Recording permission"
-        alert.informativeText = "Turn on Demo Pointer in System Settings › Privacy & Security › Screen & System Audio Recording, then quit and reopen Demo Pointer."
-        alert.addButton(withTitle: "Open System Settings")
-        alert.addButton(withTitle: "Later")
-        if alert.runModal() == .alertFirstButtonReturn {
-            openScreenRecordingSettings()
-        }
+    /// Capture failed, typically because Screen Recording isn't allowed yet: the Settings window explains
+    /// how to allow it. Shown once per launch.
+    private func showPermissionHelpIfNeeded() {
+        guard !didShowPermissionHelp, !CGPreflightScreenCaptureAccess() else { return }
+        didShowPermissionHelp = true
+        settingsWindow.show()
     }
 }
