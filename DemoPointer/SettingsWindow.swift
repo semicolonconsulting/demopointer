@@ -13,6 +13,7 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
 
     private let zoomPopUp = NSPopUpButton()
     private let sizePopUp = NSPopUpButton()
+    private let shadePopUp = NSPopUpButton()
     private let loginBox = NSButton(checkboxWithTitle: "Open at Login", target: nil, action: nil)
     #if !APPSTORE
     private let updatesBox = NSButton(checkboxWithTitle: "Check for Updates Automatically", target: nil, action: nil)
@@ -54,6 +55,7 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
     private func update() {
         zoomPopUp.selectItem(at: Settings.zoomLevels.firstIndex(of: settings.zoom) ?? 1)
         sizePopUp.selectItem(at: Settings.sizes.firstIndex { $0.diameter == settings.diameter } ?? 1)
+        shadePopUp.selectItem(at: Settings.shades.firstIndex { $0.opacity == settings.shadeOpacity } ?? 2)
         loginBox.state = LoginItem.isEnabled ? .on : .off
         #if !APPSTORE
         updatesBox.state = Updates.checksAutomatically ? .on : .off
@@ -88,6 +90,7 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
 
     @objc private func selectZoom() { settings.zoom = Settings.zoomLevels[zoomPopUp.indexOfSelectedItem] }
     @objc private func selectSize() { settings.diameter = Settings.sizes[sizePopUp.indexOfSelectedItem].diameter }
+    @objc private func selectShade() { settings.shadeOpacity = Settings.shades[shadePopUp.indexOfSelectedItem].opacity }
 
     @objc private func toggleLogin() {
         LoginItem.set(loginBox.state == .on)
@@ -172,9 +175,14 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         sizePopUp.addItems(withTitles: Settings.sizes.map(\.name))
         sizePopUp.target = self
         sizePopUp.action = #selector(selectSize)
-        let lens = NSStackView(views: [label("Zoom:"), zoomPopUp, label("Lens size:"), sizePopUp])
+        shadePopUp.addItems(withTitles: Settings.shades.map(\.name))
+        shadePopUp.target = self
+        shadePopUp.action = #selector(selectShade)
+        let lens = NSStackView(views: [label("Zoom:"), zoomPopUp, label("Lens size:"), sizePopUp,
+                                       label("Shade:"), shadePopUp])
         lens.spacing = 8
         lens.setCustomSpacing(20, after: zoomPopUp)
+        lens.setCustomSpacing(20, after: sizePopUp)
 
         let separator = NSBox()
         separator.boxType = .separator

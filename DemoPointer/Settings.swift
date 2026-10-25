@@ -10,6 +10,13 @@ final class Settings {
         ("Medium", 240),
         ("Large", 360),
     ]
+    /// How dark the rest of the screen gets while the lens is shown.
+    static let shades: [(name: String, opacity: Double)] = [
+        ("Off", 0),
+        ("Light", 0.25),
+        ("Medium", 0.45),
+        ("Dark", 0.65),
+    ]
 
     private let defaults = UserDefaults.standard
 
@@ -33,6 +40,12 @@ final class Settings {
             return value > 0 ? value : 240
         }
         set { defaults.set(newValue, forKey: "diameter") }
+    }
+
+    /// Opacity of the shade over the rest of the screen; 0 is off.
+    var shadeOpacity: Double {
+        get { defaults.object(forKey: "shadeOpacity") as? Double ?? 0.45 }
+        set { defaults.set(newValue, forKey: "shadeOpacity") }
     }
 }
 

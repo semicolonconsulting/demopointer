@@ -15,6 +15,7 @@ final class MagnifierController: NSObject {
     private let settings = Settings.shared
     private let capturer = ScreenCapturer()
     private let lens = LensWindow()
+    private let shade = ShadeWindows()
     private let ciContext = CIContext(options: [.cacheIntermediates: false])
 
     private var timer: Timer?
@@ -41,6 +42,7 @@ final class MagnifierController: NSObject {
 
         guard held else {
             lens.hide()
+            shade.hide()
             if Date().timeIntervalSince(lastHeld) > keepWarmInterval {
                 stopCapture()
             }
@@ -53,6 +55,7 @@ final class MagnifierController: NSObject {
               let displayID = screen.displayID
         else {
             lens.hide()
+            shade.hide()
             return
         }
 
@@ -64,6 +67,7 @@ final class MagnifierController: NSObject {
 
         lens.setDiameter(CGFloat(settings.diameter))
         lens.center(on: mouse)
+        shade.show(opacity: CGFloat(settings.shadeOpacity))
         lens.show(image: image)
     }
 

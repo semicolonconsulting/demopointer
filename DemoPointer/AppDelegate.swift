@@ -68,6 +68,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         sizeItem.submenu = sizeMenu
         menu.addItem(sizeItem)
 
+        let shadeMenu = NSMenu()
+        for shade in Settings.shades {
+            let shadeItem = item(shade.name, #selector(selectShade(_:)), on: shade.opacity == settings.shadeOpacity)
+            shadeItem.representedObject = shade.opacity
+            shadeMenu.addItem(shadeItem)
+        }
+        let shadeItem = NSMenuItem(title: "Shade Screen", action: nil, keyEquivalent: "")
+        shadeItem.submenu = shadeMenu
+        menu.addItem(shadeItem)
+
         menu.addItem(.separator())
         menu.addItem(item("Open at Login", #selector(toggleOpenAtLogin), on: LoginItem.isEnabled))
         #if !APPSTORE
@@ -108,6 +118,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc private func selectSize(_ sender: NSMenuItem) {
         guard let diameter = sender.representedObject as? Double else { return }
         settings.diameter = diameter
+    }
+
+    @objc private func selectShade(_ sender: NSMenuItem) {
+        guard let opacity = sender.representedObject as? Double else { return }
+        settings.shadeOpacity = opacity
     }
 
     // MARK: Permission
