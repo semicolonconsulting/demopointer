@@ -2,6 +2,8 @@
 
 A tiny macOS menu-bar app for product demos: **hold the Command (⌘) key and a magnifying lens follows your cursor.** Let go and it fades away.
 
+<img width="616" height="350" alt="demopointer" src="https://github.com/user-attachments/assets/02134367-f6f9-4656-ba3a-cf6aafbc5ee6" />
+
 - Lens is a real-time zoom of the screen under the cursor (ScreenCaptureKit, up to 60 fps).
 - Shows up in screen shares and recordings (Zoom, Meet, QuickTime), so your audience sees it too.
 - Only triggers on plain ⌘. ⌘ combined with Shift, Option or Control is ignored, so shortcuts like ⌘⇧4 don't pop the lens. (A quick ⌘C will flash it briefly.)
