@@ -78,9 +78,13 @@ APPLESCRIPT
 fi
 
 # After the layout: Finder's update above deletes a volume icon that is already there.
-cp "$APP/Contents/Resources/AppIcon.icns" "$VOL/.VolumeIcon.icns"
-SetFile -a V "$VOL/.VolumeIcon.icns"
-SetFile -a C "$VOL"
+if [[ -f "$APP/Contents/Resources/AppIcon.icns" ]]; then
+    cp "$APP/Contents/Resources/AppIcon.icns" "$VOL/.VolumeIcon.icns"
+    SetFile -a V "$VOL/.VolumeIcon.icns"
+    SetFile -a C "$VOL"
+else
+    echo "warning: no AppIcon.icns in the app, so the DMG has the default volume icon." >&2
+fi
 rm -rf "$VOL/.fseventsd"
 sync
 hdiutil detach -quiet "$VOL" || { sleep 2; hdiutil detach -quiet -force "$VOL"; }
