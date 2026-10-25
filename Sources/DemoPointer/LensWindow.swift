@@ -11,6 +11,9 @@ final class LensWindow {
     private let imageLayer = CALayer()
     private let ringLayer = CAShapeLayer()
 
+    private let fadeDuration: TimeInterval = 0.15
+    private var isShown = false
+
     private(set) var diameter: CGFloat = 0
 
     init() {
@@ -78,15 +81,34 @@ final class LensWindow {
         CATransaction.setDisableActions(true)
         imageLayer.contents = image
         CATransaction.commit()
+
+        guard !isShown else { return }
+        isShown = true
         if !window.isVisible {
+            window.alphaValue = 0
             window.orderFrontRegardless()
         }
+        fade(to: 1)
     }
 
     func hide() {
-        if window.isVisible {
-            window.orderOut(nil)
+        guard isShown else { return }
+        isShown = false
+        fade(to: 0)
+        Task { @MainActor [weak self, fadeDuration] in
+            try? await Task.sleep(nanoseconds: UInt64(fadeDuration * 1_000_000_000))
+            // Skip if the lens was shown again while fading out.
+            guard let self, !self.isShown else { return }
+            self.window.orderOut(nil)
+            self.imageLayer.contents = nil
         }
-        imageLayer.contents = nil
+    }
+
+    private func fade(to alpha: CGFloat) {
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = fadeDuration
+            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            window.animator().alphaValue = alpha
+        }
     }
 }
