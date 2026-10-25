@@ -135,7 +135,9 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         let textWidth = width - inset * 2 - 36
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
 
-        let icon = NSImageView(image: NSApp.applicationIconImage)
+        // Straight from the asset catalog: applicationIconImage goes through macOS's icon cache, which can
+        // keep showing an older icon after the app is replaced.
+        let icon = NSImageView(image: NSImage(named: "AppIcon") ?? NSApp.applicationIconImage)
         icon.widthAnchor.constraint(equalToConstant: 72).isActive = true
         icon.heightAnchor.constraint(equalToConstant: 72).isActive = true
         let titles = NSStackView(views: [label("Demo Pointer", font: .systemFont(ofSize: 22, weight: .semibold)),
