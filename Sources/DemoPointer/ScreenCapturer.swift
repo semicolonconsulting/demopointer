@@ -29,7 +29,9 @@ final class ScreenCapturer: NSObject, SCStreamOutput, SCStreamDelegate {
     func start(displayID: CGDirectDisplayID, scale: CGFloat) async throws {
         await stop()
 
-        let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
+        // Include off-screen windows: the lens is hidden when capture starts, and an app with no
+        // on-screen windows is left out of `applications`, which would let the lens magnify itself.
+        let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false)
         guard let display = content.displays.first(where: { $0.displayID == displayID }) else {
             throw CaptureError.displayNotFound
         }
