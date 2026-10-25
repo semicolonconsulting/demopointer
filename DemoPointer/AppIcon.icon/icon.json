@@ -1,15 +1,24 @@
 {
   "fill" : {
-    "automatic-gradient" : "extended-srgb:0.05000,0.75000,0.79000,1.00000"
+    "linear-gradient" : [
+      "srgb:0.25000,0.72000,0.81000,1.00000",
+      "srgb:0.11000,0.78000,0.68000,1.00000"
+    ],
+    "orientation" : {
+      "start" : { "x" : 0.5, "y" : 0 },
+      "stop" : { "x" : 0.5, "y" : 1 }
+    }
   },
   "groups" : [
     {
       "layers" : [
         {
+          "glass" : false,
           "image-name" : "foreground.png",
           "name" : "foreground"
         }
-      ]
+      ],
+      "specular" : false
     }
   ],
   "supported-platforms" : {

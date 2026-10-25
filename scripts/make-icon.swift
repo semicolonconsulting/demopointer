@@ -1,7 +1,7 @@
 // Makes the app icon, DemoPointer/AppIcon.icon, from art/icon-source.png (a 1254 px render of a glossy
 // teal squircle with a white ring and pointing hand).
 // macOS 26 and later draw an app icon's shape, edge and shadow themselves, and put icons that bring their
-// own squircle on a grey plate. So this is an Icon Composer icon: a teal fill, plus one layer holding just
+// own squircle on a grey plate. So this is an Icon Composer icon: a teal gradient fill, plus one layer holding just
 // the ring and hand, lifted off the render. Xcode also makes a classic .icns from it for macOS 13–15.
 // Usage: swift scripts/make-icon.swift
 import AppKit
@@ -70,19 +70,31 @@ func layerPNG() -> Data {
     return NSBitmapImageRep(cgImage: ctx.makeImage()!).representation(using: .png, properties: [:])!
 }
 
+// desktopcloth's gradient: blue-teal at the top to green-teal at the bottom. The layer is flat (glass and
+// specular off): the render already has its own soft shading, and the system glass darkened the places
+// where the hand meets the ring and the cuff.
 let iconJSON = """
 {
   "fill" : {
-    "automatic-gradient" : "extended-srgb:\(String(format: "%.5f,%.5f,%.5f", teal.r, teal.g, teal.b)),1.00000"
+    "linear-gradient" : [
+      "srgb:0.25000,0.72000,0.81000,1.00000",
+      "srgb:0.11000,0.78000,0.68000,1.00000"
+    ],
+    "orientation" : {
+      "start" : { "x" : 0.5, "y" : 0 },
+      "stop" : { "x" : 0.5, "y" : 1 }
+    }
   },
   "groups" : [
     {
       "layers" : [
         {
+          "glass" : false,
           "image-name" : "foreground.png",
           "name" : "foreground"
         }
-      ]
+      ],
+      "specular" : false
     }
   ],
   "supported-platforms" : {
