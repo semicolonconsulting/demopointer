@@ -16,6 +16,7 @@ final class MagnifierController: NSObject {
     private let capturer = ScreenCapturer()
     private let lens = LensWindow()
     private let shade = ShadeWindows()
+    private let cursor = CursorHider()
     private let ciContext = CIContext(options: [.cacheIntermediates: false])
 
     private var timer: Timer?
@@ -43,6 +44,7 @@ final class MagnifierController: NSObject {
         guard held else {
             lens.hide()
             shade.hide()
+            cursor.show()
             if Date().timeIntervalSince(lastHeld) > keepWarmInterval {
                 stopCapture()
             }
@@ -56,6 +58,7 @@ final class MagnifierController: NSObject {
         else {
             lens.hide()
             shade.hide()
+            cursor.show()
             return
         }
 
@@ -69,6 +72,7 @@ final class MagnifierController: NSObject {
         lens.center(on: mouse)
         shade.show(opacity: CGFloat(settings.shadeOpacity))
         lens.show(image: image)
+        cursor.hide()
     }
 
     /// Crops the region under the cursor out of the captured display frame.

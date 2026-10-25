@@ -5,6 +5,7 @@ A tiny macOS menu-bar app for product demos: **hold the Command (⌘) key and a 
 - Lens is a real-time zoom of the screen under the cursor (ScreenCaptureKit, up to 60 fps).
 - Shows up in screen shares and recordings (Zoom, Meet, QuickTime), so your audience sees it too.
 - Only triggers on plain ⌘. ⌘ combined with Shift, Option or Control is ignored, so shortcuts like ⌘⇧4 don't pop the lens. (A quick ⌘C will flash it briefly.)
+- While the lens is shown, the mouse pointer is hidden (the lens marks where it is). GitHub version only: it relies on an undocumented macOS setting the App Store doesn't allow.
 - While the lens is shown, the rest of the screen is shaded so the magnified spot stands out. Pick Off, Light (default), Medium or Dark.
 - Menu-bar icon lets you toggle it, pick zoom (1.5×, 2×, 3×, 4×), lens size (small, medium, large) and shade. Settings are remembered.
 - A welcome window on first launch explains how to use it and how to allow Screen Recording. It's also **Settings…** in the menu.
