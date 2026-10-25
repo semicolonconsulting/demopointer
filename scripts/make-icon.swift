@@ -29,56 +29,64 @@ func drawIcon(in ctx: CGContext) {
     ctx.drawLinearGradient(gradient, start: CGPoint(x: body.minX, y: body.maxY), end: CGPoint(x: body.maxX, y: body.minY), options: [])
     ctx.restoreGState()
 
-    let lensCenter = CGPoint(x: 460, y: 565)
-    let lensRadius: CGFloat = 235
+    // White lens ring with a hand rising from the bottom edge, its index finger pointing at the
+    // ring's center. Same idea as the menu bar icon (StatusIcon.swift), drawn by hand because SF
+    // Symbols may not be used in app icons.
+    let lensCenter = CGPoint(x: 512, y: 590)
+    let lensRadius: CGFloat = 250
+    let hand = handPath()
 
-    // Handle, pointing down-right.
+    // Ring and hand go on one layer, so the gap around the hand can be cut out of the ring.
     ctx.saveGState()
-    ctx.setShadow(offset: CGSize(width: 0, height: -6), blur: 14, color: NSColor.black.withAlphaComponent(0.3).cgColor)
-    ctx.setLineCap(.round)
-    ctx.setLineWidth(78)
-    ctx.setStrokeColor(NSColor.white.cgColor)
-    let angle = -CGFloat.pi / 4
-    let handleStart = CGPoint(x: lensCenter.x + cos(angle) * (lensRadius + 20), y: lensCenter.y + sin(angle) * (lensRadius + 20))
-    let handleEnd = CGPoint(x: lensCenter.x + cos(angle) * (lensRadius + 175), y: lensCenter.y + sin(angle) * (lensRadius + 175))
-    ctx.move(to: handleStart)
-    ctx.addLine(to: handleEnd)
-    ctx.strokePath()
-    ctx.restoreGState()
-
-    // Glass.
-    let lensRect = CGRect(x: lensCenter.x - lensRadius, y: lensCenter.y - lensRadius, width: lensRadius * 2, height: lensRadius * 2)
-    ctx.saveGState()
-    ctx.setShadow(offset: CGSize(width: 0, height: -6), blur: 14, color: NSColor.black.withAlphaComponent(0.3).cgColor)
-    ctx.setFillColor(NSColor(srgbRed: 0.93, green: 0.94, blue: 0.98, alpha: 1).cgColor)
-    ctx.fillEllipse(in: lensRect)
-    ctx.restoreGState()
-
-    // Magnified pointer arrow inside the glass.
-    ctx.saveGState()
-    ctx.addEllipse(in: lensRect)
+    ctx.addPath(bodyPath)
     ctx.clip()
-    let arrow: [CGPoint] = [
-        CGPoint(x: 0, y: 0), CGPoint(x: 0, y: -16), CGPoint(x: 4, y: -12),
-        CGPoint(x: 6.5, y: -17.5), CGPoint(x: 9, y: -16.5), CGPoint(x: 6.5, y: -11), CGPoint(x: 11.5, y: -11),
-    ]
-    let scale: CGFloat = 17
-    let origin = CGPoint(x: lensCenter.x - 5.5 * scale, y: lensCenter.y + 9 * scale)
-    let arrowPath = CGMutablePath()
-    arrowPath.addLines(between: arrow.map { CGPoint(x: origin.x + $0.x * scale, y: origin.y + $0.y * scale) })
-    arrowPath.closeSubpath()
-    ctx.addPath(arrowPath)
-    ctx.setFillColor(NSColor(white: 0.08, alpha: 1).cgColor)
+    ctx.setShadow(offset: CGSize(width: 0, height: -8), blur: 18, color: NSColor.black.withAlphaComponent(0.28).cgColor)
+    ctx.beginTransparencyLayer(auxiliaryInfo: nil)
     ctx.setStrokeColor(NSColor.white.cgColor)
-    ctx.setLineWidth(18)
+    ctx.setLineWidth(54)
+    ctx.strokeEllipse(in: CGRect(x: lensCenter.x - lensRadius, y: lensCenter.y - lensRadius,
+                                 width: lensRadius * 2, height: lensRadius * 2))
+    // Gap: erase the hand's outline, widened.
+    ctx.setBlendMode(.clear)
+    ctx.addPath(hand)
+    ctx.setLineWidth(64)
     ctx.setLineJoin(.round)
-    ctx.drawPath(using: .fillStroke)
+    ctx.strokePath()
+    ctx.setBlendMode(.normal)
+    ctx.addPath(hand)
+    ctx.setFillColor(NSColor.white.cgColor)
+    ctx.fillPath()
+    // Creases between the fingers.
+    ctx.setStrokeColor(NSColor(srgbRed: 0.72, green: 0.78, blue: 0.96, alpha: 1).cgColor)
+    ctx.setLineWidth(12)
+    ctx.setLineCap(.round)
+    for (x, top, bottom) in [(CGFloat(556), CGFloat(400), CGFloat(330)), (628, 380, 310), (698, 355, 290)] {
+        ctx.move(to: CGPoint(x: x, y: top))
+        ctx.addLine(to: CGPoint(x: x, y: bottom))
+    }
+    ctx.strokePath()
+    ctx.endTransparencyLayer()
     ctx.restoreGState()
+}
 
-    // Rim.
-    ctx.setStrokeColor(NSColor.white.cgColor)
-    ctx.setLineWidth(46)
-    ctx.strokeEllipse(in: lensRect.insetBy(dx: -23, dy: -23))
+/// A pointing hand seen from the back: index finger up, three folded fingers, thumb on the left,
+/// and a wrist that runs off the bottom of the icon. The fingertip is at (512, 610).
+func handPath() -> CGPath {
+    let path = CGMutablePath()
+    // Index finger.
+    path.addRoundedRect(in: CGRect(x: 468, y: 330, width: 92, height: 290), cornerWidth: 46, cornerHeight: 46)
+    // Folded fingers, stepping down to the right.
+    path.addRoundedRect(in: CGRect(x: 552, y: 290, width: 82, height: 150), cornerWidth: 41, cornerHeight: 41)
+    path.addRoundedRect(in: CGRect(x: 626, y: 270, width: 78, height: 140), cornerWidth: 39, cornerHeight: 39)
+    path.addRoundedRect(in: CGRect(x: 696, y: 250, width: 70, height: 125), cornerWidth: 35, cornerHeight: 35)
+    // Palm.
+    path.addRoundedRect(in: CGRect(x: 440, y: 140, width: 326, height: 230), cornerWidth: 90, cornerHeight: 90)
+    // Thumb, tucked against the finger.
+    path.addRoundedRect(in: CGRect(x: 380, y: 230, width: 110, height: 170), cornerWidth: 55, cornerHeight: 55,
+                        transform: CGAffineTransform(translationX: 435, y: 315).rotated(by: 0.5).translatedBy(x: -435, y: -315))
+    // Wrist, off the bottom edge.
+    path.addRect(CGRect(x: 470, y: 0, width: 260, height: 200))
+    return path
 }
 
 func render(pixels: Int) -> Data {
