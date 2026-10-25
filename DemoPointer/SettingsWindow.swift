@@ -136,7 +136,10 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
 
         // The app file's icon as macOS draws it (on macOS 26 and later, with the system's shape and glass).
-        let icon = NSImageView(image: NSWorkspace.shared.icon(forFile: Bundle.main.bundlePath))
+        // It comes at 32 pt, and image views don't scale up, so ask for the size it's shown at.
+        let appIcon = NSWorkspace.shared.icon(forFile: Bundle.main.bundlePath)
+        appIcon.size = NSSize(width: 72, height: 72)
+        let icon = NSImageView(image: appIcon)
         icon.widthAnchor.constraint(equalToConstant: 72).isActive = true
         icon.heightAnchor.constraint(equalToConstant: 72).isActive = true
         let titles = NSStackView(views: [label("Demo Pointer", font: .systemFont(ofSize: 22, weight: .semibold)),
