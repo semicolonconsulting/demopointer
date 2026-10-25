@@ -9,7 +9,7 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
-      - name: Build app bundle
+      - name: Build app bundle (ad-hoc signed)
         run: ./scripts/build-app.sh
       - name: Zip app
         run: cd build && ditto -c -k --keepParent DemoPointer.app DemoPointer.zip
