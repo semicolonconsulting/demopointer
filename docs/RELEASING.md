@@ -45,7 +45,17 @@ TEAM_ID=ABCDE12345 NOTARY_PROFILE=demopointer-notary VERSION=1.0.0 ./scripts/rel
 gh release create v1.0.0 build/release/DemoPointer-1.0.0.dmg --generate-notes
 ```
 
-From CI: add these repository secrets, then push a tag (`git tag v1.0.0 && git push origin v1.0.0`).
+From CI: add these repository secrets and set the repository variable `NOTARIZE` to `true` (Settings › Secrets and variables › Actions › Variables), then push a tag (`git tag v1.0.0 && git push origin v1.0.0`). While `NOTARIZE` isn't set, the release workflow skips itself on tag pushes.
+
+### Unsigned release (until there's a Developer ID)
+
+```sh
+./scripts/build-app.sh                      # ad-hoc signed build/DemoPointer-<version>.dmg
+git tag v1.0.0 && git push origin v1.0.0
+gh release create v1.0.0 build/DemoPointer-1.0.0.dmg --title "Demo Pointer 1.0" --notes-file notes.md
+```
+
+Users then need Open Anyway in Privacy & Security on first launch (the DMG's Read Me explains it).
 
 | Secret | Value |
 | --- | --- |

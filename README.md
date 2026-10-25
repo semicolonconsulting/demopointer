@@ -20,7 +20,9 @@ A tiny macOS menu-bar app for product demos: **hold the Command (⌘) key and a 
 
 ## Download
 
-Notarized builds are on the [Releases](https://github.com/semicolonconsulting/demopointer/releases) page. Open `DemoPointer-<version>.dmg`, drag **DemoPointer** onto **Applications**, then open it from Applications.
+Get `DemoPointer-<version>.dmg` from the [Releases](https://github.com/semicolonconsulting/demopointer/releases) page. Open it, drag **DemoPointer** onto **Applications**, then open it from Applications.
+
+Releases aren't notarized by Apple yet, so the first launch is blocked with a message that macOS can't verify the app. Open System Settings › Privacy & Security, scroll down to the message about DemoPointer and click **Open Anyway**. You only need to do this once. Or run `xattr -dr com.apple.quarantine /Applications/DemoPointer.app`.
 
 ## Build and run
 

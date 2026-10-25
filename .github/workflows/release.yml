@@ -19,6 +19,10 @@ permissions:
 
 jobs:
   release:
+    # Off until signing is set up: set the repository variable NOTARIZE to "true" once the secrets above
+    # exist. Until then, releases are built and published by hand (docs/RELEASING.md), and a tag push
+    # skips this job instead of failing.
+    if: vars.NOTARIZE == 'true'
     runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
