@@ -12,7 +12,9 @@ cd "$(dirname "$0")/.."
 CONFIG="${CONFIG:-Release}"
 DERIVED="build/DerivedData"
 
-xcodebuild build \
+mkdir -p build
+LOG="build/xcodebuild.log"
+if ! xcodebuild build \
     -project DemoPointer.xcodeproj \
     -scheme DemoPointer \
     -configuration "$CONFIG" \
@@ -21,7 +23,12 @@ xcodebuild build \
     CODE_SIGN_STYLE=Manual \
     CODE_SIGN_IDENTITY="${SIGN_IDENTITY:--}" \
     DEVELOPMENT_TEAM="${TEAM_ID:-}" \
-    | grep -E "warning:|error:|BUILD (SUCCEEDED|FAILED)" || true
+    > "$LOG" 2>&1; then
+    grep -E "error|failed|Failed" "$LOG" | tail -40 >&2
+    echo "Build failed; full log in $LOG" >&2
+    exit 1
+fi
+grep -E "warning:|BUILD SUCCEEDED" "$LOG" | grep -v "Metadata extraction skipped" || true
 
 APP="$DERIVED/Build/Products/$CONFIG/DemoPointer.app"
 [[ -d "$APP" ]] || { echo "Build failed: $APP not found" >&2; exit 1; }

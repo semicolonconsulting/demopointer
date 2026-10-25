@@ -6,11 +6,11 @@ on:
 
 jobs:
   build:
-    runs-on: macos-15
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
       - name: Select the newest Xcode
-        # The app icon is an Icon Composer .icon, which needs Xcode 26 or later.
+        # The app icon is an Icon Composer .icon, which needs Xcode 26 or later on macOS 26.
         run: |
           sudo xcode-select -s "$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)"
           xcodebuild -version
