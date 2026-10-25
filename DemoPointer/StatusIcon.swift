@@ -25,17 +25,12 @@ enum StatusIcon {
         NSColor.black.setStroke()
         ring.stroke()
 
-        let dotRadius = 1.3 * scale
-        NSColor.black.setFill()
-        NSBezierPath(ovalIn: NSRect(x: center.x - dotRadius, y: center.y - dotRadius,
-                                    width: dotRadius * 2, height: dotRadius * 2)).fill()
-
-        // The hand comes in from the bottom right, its fingertip just short of the center dot.
+        // The hand comes in from the bottom right, its fingertip near the center.
         guard let hand = NSImage(systemSymbolName: "hand.point.up.left.fill", accessibilityDescription: nil)?
             .withSymbolConfiguration(.init(pointSize: 9.5 * scale, weight: .regular))
         else { return }
         let handSize = hand.size
-        let tip = NSPoint(x: center.x + 0.9 * scale, y: center.y - 1.3 * scale)
+        let tip = NSPoint(x: center.x + 0.2 * scale, y: center.y - 0.5 * scale)
         let handRect = NSRect(x: tip.x - handSize.width * 0.04, y: tip.y - handSize.height * 0.96,
                               width: handSize.width, height: handSize.height)
 
