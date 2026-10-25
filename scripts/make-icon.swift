@@ -1,137 +1,100 @@
-// Makes the app icon from art/icon-source.png (a 1254 px render of the glossy teal squircle with the
-// ring and pointing hand on a white background) and writes every size into the AppIcon asset catalog.
-// It cuts the squircle out along its traced edge, so the glass rim stays whole and the soft glow and
-// white background around it are dropped, then places it on Apple's icon grid (an 824 pt wide body on a
-// 1024 canvas) with a drop shadow.
+// Makes the app icon, DemoPointer/AppIcon.icon, from art/icon-source.png (a 1254 px render of a glossy
+// teal squircle with a white ring and pointing hand).
+// macOS 26 and later draw an app icon's shape, edge and shadow themselves, and put icons that bring their
+// own squircle on a grey plate. So this is an Icon Composer icon: a teal fill, plus one layer holding just
+// the ring and hand, lifted off the render. Xcode also makes a classic .icns from it for macOS 13–15.
 // Usage: swift scripts/make-icon.swift
 import AppKit
 
-let outputDir = URL(fileURLWithPath: "DemoPointer/Assets.xcassets/AppIcon.appiconset")
-/// Luminance between the pale glow outside the squircle (about 0.9) and its rim (about 0.5).
-let edgeThreshold: CGFloat = 0.7
-/// How far inside the traced edge the cut goes, in source pixels, so no glow fringe is left.
-let edgeInset: CGFloat = 0.6
+let iconDir = URL(fileURLWithPath: "DemoPointer/AppIcon.icon")
+let teal = (r: 0.05, g: 0.75, b: 0.79) // the render's background, sampled
+
+// Measured in the source: the squircle's bounds, and where the ring and hand are.
+let sourceBody = CGRect(x: 126, y: 114, width: 1002, height: 985)
+let ringCenter = CGPoint(x: 622, y: 552)
+let ringReach: CGFloat = 335 // past the ring's outer edge
+let handArea = CGRect(x: 495, y: 555, width: 280, height: 480)
 
 let source = NSBitmapImageRep(data: try! Data(contentsOf: URL(fileURLWithPath: "art/icon-source.png")))!.cgImage!
+let width = source.width, height = source.height
 
-/// Luminance of every source pixel, row 0 at the top.
-let luminance: [[CGFloat]] = {
-    let width = source.width, height = source.height
+// Source pixels as sRGB bytes, row 0 at the top. The context owns the memory, so it's kept for the run.
+let inputContext: CGContext = {
     let ctx = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4,
                         space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)!
     ctx.draw(source, in: CGRect(x: 0, y: 0, width: width, height: height))
-    let p = ctx.data!.assumingMemoryBound(to: UInt8.self)
-    return (0..<height).map { y in
-        (0..<width).map { x in
-            let i = (y * width + x) * 4
-            return (0.3 * CGFloat(p[i]) + 0.59 * CGFloat(p[i + 1]) + 0.11 * CGFloat(p[i + 2])) / 255
-        }
-    }
+    return ctx
 }()
+let input = inputContext.data!.assumingMemoryBound(to: UInt8.self)
 
-/// Scans from outside inward along one line of luminance values and returns where it first crosses
-/// the threshold, as a sub-pixel position measured from the scan's start, or nil if it never does.
-func edge(_ values: [CGFloat]) -> CGFloat? {
-    for i in 1..<values.count where values[i] < edgeThreshold && values[i - 1] >= edgeThreshold {
-        let t = (values[i - 1] - edgeThreshold) / (values[i - 1] - values[i])
-        return CGFloat(i - 1) + t + 0.5
-    }
-    return nil
-}
-
-/// The cut-out mask: each pixel's coverage inside the traced edge, both across its row and down its
-/// column, so straight sides and corners are all anti-aliased.
-let mask: CGImage = {
-    let width = source.width, height = source.height
-    var rows = [(CGFloat, CGFloat)?](repeating: nil, count: height)
-    for y in 0..<height {
-        let line = luminance[y]
-        // Only lines that cross the squircle: its middle stays dark all the way.
-        guard let left = edge(line), let fromRight = edge(line.reversed()) else { continue }
-        rows[y] = (left + edgeInset, CGFloat(width) - fromRight - edgeInset)
-    }
-    var columns = [(CGFloat, CGFloat)?](repeating: nil, count: width)
-    for x in 0..<width {
-        let line = (0..<height).map { luminance[$0][x] }
-        guard let top = edge(line), let fromBottom = edge(line.reversed()) else { continue }
-        columns[x] = (top + edgeInset, CGFloat(height) - fromBottom - edgeInset)
-    }
-    let ctx = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width,
-                        space: CGColorSpaceCreateDeviceGray(), bitmapInfo: CGImageAlphaInfo.none.rawValue)!
-    let out = ctx.data!.assumingMemoryBound(to: UInt8.self)
-    func coverage(_ center: CGFloat, _ span: (CGFloat, CGFloat)?) -> CGFloat {
-        guard let (start, end) = span, end > start else { return 0 }
-        return min(max(center - start + 0.5, 0), 1) * min(max(end - center + 0.5, 0), 1)
-    }
+/// The ring and hand on a transparent background. Only pixels near the ring or on the hand are taken, so
+/// the glossy highlights elsewhere on the render stay behind. White is told from teal by the red channel,
+/// which teal has almost none of, and the teal is un-mixed from the anti-aliased edges.
+let foreground: CGImage = {
+    let out = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4,
+                        space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+    let o = out.data!.assumingMemoryBound(to: UInt8.self)
     for y in 0..<height {
         for x in 0..<width {
-            let c = min(coverage(CGFloat(x) + 0.5, rows[y]), coverage(CGFloat(y) + 0.5, columns[x]))
-            out[y * width + x] = UInt8(c * 255)
+            let i = (y * width + x) * 4
+            let inArea = hypot(CGFloat(x) - ringCenter.x, CGFloat(y) - ringCenter.y) <= ringReach
+                || handArea.contains(CGPoint(x: x, y: y))
+            guard inArea else { continue }
+            let r = Double(input[i]) / 255, g = Double(input[i + 1]) / 255, b = Double(input[i + 2]) / 255
+            // Starts above the lighter teal inside the ring (red up to about 0.22), so only the white is lifted.
+            let alpha = min(max((r - 0.25) / (0.88 - 0.25), 0), 1)
+            guard alpha > 0.02 else { continue }
+            func unmix(_ v: Double, _ bg: Double) -> UInt8 {
+                let c = min(max((v - (1 - alpha) * bg) / alpha, 0), 1)
+                return UInt8(c * alpha * 255)
+            }
+            o[i] = unmix(r, teal.r); o[i + 1] = unmix(g, teal.g); o[i + 2] = unmix(b, teal.b)
+            o[i + 3] = UInt8(alpha * 255)
         }
     }
-    return ctx.makeImage()!
+    return out.makeImage()!
 }()
 
-/// The squircle's bounds in the source, from the mask.
-let sourceBody: CGRect = {
-    let width = source.width, height = source.height
-    let ctx = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width,
-                        space: CGColorSpaceCreateDeviceGray(), bitmapInfo: CGImageAlphaInfo.none.rawValue)!
-    ctx.draw(mask, in: CGRect(x: 0, y: 0, width: width, height: height))
-    let p = ctx.data!.assumingMemoryBound(to: UInt8.self)
-    var minX = width, maxX = 0, minY = height, maxY = 0
-    for y in 0..<height { for x in 0..<width where p[y * width + x] > 127 {
-        minX = min(minX, x); maxX = max(maxX, x); minY = min(minY, y); maxY = max(maxY, y)
-    } }
-    return CGRect(x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1)
-}()
-
-/// Draws the 1024×1024 master. Coordinates have a top-left origin.
-func drawIcon(in ctx: CGContext) {
-    // 824 pt wide like every macOS icon body, centered.
-    let scale = 824 / sourceBody.width
-    let body = CGRect(x: 100, y: 512 - sourceBody.height * scale / 2, width: 824, height: sourceBody.height * scale)
-    let imageRect = CGRect(x: body.minX - sourceBody.minX * scale, y: body.minY - sourceBody.minY * scale,
-                           width: CGFloat(source.width) * scale, height: CGFloat(source.height) * scale)
-
-    ctx.setShadow(offset: CGSize(width: 0, height: 12), blur: 28, color: NSColor.black.withAlphaComponent(0.28).cgColor)
-    ctx.beginTransparencyLayer(auxiliaryInfo: nil)
-    // CGImages draw bottom-up, so flip locally on this top-left canvas.
-    ctx.saveGState()
-    ctx.translateBy(x: imageRect.minX, y: imageRect.maxY)
-    ctx.scaleBy(x: 1, y: -1)
+/// The foreground on Icon Composer's 1024 canvas, with the render's squircle filling it edge to edge.
+func layerPNG() -> Data {
+    let ctx = CGContext(data: nil, width: 1024, height: 1024, bitsPerComponent: 8, bytesPerRow: 1024 * 4,
+                        space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+    let scale = 1024 / sourceBody.width
+    let top = (1024 - sourceBody.height * scale) / 2
+    // CGContext has a bottom-left origin; convert from the source's top-left layout.
+    let rect = CGRect(x: -sourceBody.minX * scale,
+                      y: 1024 - (top - sourceBody.minY * scale) - CGFloat(height) * scale,
+                      width: CGFloat(width) * scale, height: CGFloat(height) * scale)
     ctx.interpolationQuality = .high
-    ctx.clip(to: CGRect(origin: .zero, size: imageRect.size), mask: mask)
-    ctx.draw(source, in: CGRect(origin: .zero, size: imageRect.size))
-    ctx.restoreGState()
-    ctx.endTransparencyLayer()
+    ctx.draw(foreground, in: rect)
+    return NSBitmapImageRep(cgImage: ctx.makeImage()!).representation(using: .png, properties: [:])!
 }
 
-func render(pixels: Int) -> Data {
-    let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: pixels, pixelsHigh: pixels, bitsPerSample: 8,
-                               samplesPerPixel: 4, hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB,
-                               bytesPerRow: 0, bitsPerPixel: 0)!
-    let ctx = NSGraphicsContext(bitmapImageRep: rep)!
-    ctx.imageInterpolation = .high
-    let cg = ctx.cgContext
-    // Top-left origin, 1024 units across.
-    cg.translateBy(x: 0, y: CGFloat(pixels))
-    cg.scaleBy(x: CGFloat(pixels) / 1024, y: -CGFloat(pixels) / 1024)
-    drawIcon(in: cg)
-    return rep.representation(using: .png, properties: [:])!
-}
-
-print("Squircle in the source: \(sourceBody)")
-var images: [[String: String]] = []
-for points in [16, 32, 128, 256, 512] {
-    for scale in [1, 2] {
-        let pixels = points * scale
-        let name = "icon_\(points)x\(points)\(scale == 2 ? "@2x" : "").png"
-        try render(pixels: pixels).write(to: outputDir.appendingPathComponent(name))
-        images.append(["filename": name, "idiom": "mac", "scale": "\(scale)x", "size": "\(points)x\(points)"])
+let iconJSON = """
+{
+  "fill" : {
+    "automatic-gradient" : "extended-srgb:\(String(format: "%.5f,%.5f,%.5f", teal.r, teal.g, teal.b)),1.00000"
+  },
+  "groups" : [
+    {
+      "layers" : [
+        {
+          "image-name" : "foreground.png",
+          "name" : "foreground"
+        }
+      ]
     }
+  ],
+  "supported-platforms" : {
+    "squares" : [
+      "macOS"
+    ]
+  }
 }
-let contents: [String: Any] = ["images": images, "info": ["author": "xcode", "version": 1]]
-let json = try JSONSerialization.data(withJSONObject: contents, options: [.prettyPrinted, .sortedKeys])
-try json.write(to: outputDir.appendingPathComponent("Contents.json"))
-print("Wrote \(images.count) icon images to \(outputDir.path)")
+
+"""
+
+try FileManager.default.createDirectory(at: iconDir.appendingPathComponent("Assets"), withIntermediateDirectories: true)
+try layerPNG().write(to: iconDir.appendingPathComponent("Assets/foreground.png"))
+try iconJSON.write(to: iconDir.appendingPathComponent("icon.json"), atomically: true, encoding: .utf8)
+print("Wrote \(iconDir.path)")
