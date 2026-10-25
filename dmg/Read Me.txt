@@ -18,6 +18,9 @@ The first time it opens, a welcome window explains how to use it.
 Demo Pointer opens at login by default; turn that off in the welcome
 window (Settings) or in the menu bar icon's menu.
 
+Click the menu bar icon to turn Demo Pointer on or off: its circle
+is filled while it's on. Right-click the icon for settings.
+
 
 Allow Screen Recording
 ----------------------

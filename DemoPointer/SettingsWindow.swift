@@ -151,8 +151,8 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
              "Hold the ⌘ Command key by itself and a magnifying lens follows your pointer. Let go and it fades away. "
                 + "It shows up in screen shares and recordings too."),
             (symbol("menubar.rectangle"),
-             "The magnifier icon in the menu bar has the same settings as this window. Can't see it? "
-                + "A full menu bar, the notch or a menu bar manager can hide it."),
+             "Click the Demo Pointer icon in the menu bar to turn it on or off: the circle is filled while it's on. "
+                + "Right-click it for settings. Can't see it? A full menu bar, the notch or a menu bar manager can hide it."),
         ].map { image, text in step(image, text, width: textWidth) }
 
         permissionText.preferredMaxLayoutWidth = textWidth

@@ -7,13 +7,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let settingsWindow = SettingsWindow()
     private var statusItem: NSStatusItem!
     private var didShowPermissionHelp = false
-
-    func applicationDidFinishLaunching(_ notification: Notification) {
-        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        statusItem.button?.image = StatusIcon.make()
+    private lazy var menu: NSMenu = {
         let menu = NSMenu()
         menu.delegate = self
-        statusItem.menu = menu
+        return menu
+    }()
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        // Left-click turns the magnifier on or off; right-click (or Control-click) opens the menu.
+        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        statusItem.button?.target = self
+        statusItem.button?.action = #selector(statusItemClicked)
+        statusItem.button?.sendAction(on: [.leftMouseUp, .rightMouseUp])
+        refreshStatusItem()
 
         LoginItem.applyDefaultIfNeeded()
 
@@ -34,6 +40,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         #if !APPSTORE
         Updates.startAutomaticChecks()
         #endif
+    }
+
+    // MARK: Status item
+
+    @objc private func statusItemClicked() {
+        guard let event = NSApp.currentEvent else { return }
+        if event.type == .rightMouseUp || event.modifierFlags.contains(.control) {
+            // Attached only while it's open, so a left-click doesn't open it.
+            statusItem.menu = menu
+            statusItem.button?.performClick(nil)
+            statusItem.menu = nil
+        } else {
+            toggleEnabled()
+        }
+    }
+
+    /// The ring is filled while the magnifier is on.
+    private func refreshStatusItem() {
+        statusItem.button?.image = StatusIcon.make(filled: settings.isEnabled)
+        statusItem.button?.toolTip = settings.isEnabled
+            ? "Demo Pointer is on: hold ⌘ to magnify. Click to turn off, right-click for settings."
+            : "Demo Pointer is off. Click to turn on, right-click for settings."
     }
 
     // MARK: Menu
@@ -100,7 +128,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc private func showSettings() { settingsWindow.show() }
-    @objc private func toggleEnabled() { settings.isEnabled.toggle() }
+    @objc private func toggleEnabled() {
+        settings.isEnabled.toggle()
+        refreshStatusItem()
+    }
     @objc private func toggleOpenAtLogin() { LoginItem.set(!LoginItem.isEnabled) }
     @objc private func openScreenRecordingSettings() { SettingsWindow.openScreenRecordingSettings() }
     @objc private func openPrivacyPolicy() { NSWorkspace.shared.open(privacyPolicyURL) }

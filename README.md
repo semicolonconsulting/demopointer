@@ -7,7 +7,7 @@ A tiny macOS menu-bar app for product demos: **hold the Command (⌘) key and a 
 - Only triggers on plain ⌘. ⌘ combined with Shift, Option or Control is ignored, so shortcuts like ⌘⇧4 don't pop the lens. (A quick ⌘C will flash it briefly.)
 - While the lens is shown, the mouse pointer is hidden (the lens marks where it is). GitHub version only: it relies on an undocumented macOS setting the App Store doesn't allow.
 - While the lens is shown, the rest of the screen is shaded so the magnified spot stands out. Pick Off, Light (default), Medium or Dark.
-- Menu-bar icon lets you toggle it, pick zoom (1.5×, 2×, 3×, 4×), lens size (small, medium, large) and shade. Settings are remembered.
+- Click the menu-bar icon to turn it on or off (the circle is filled while it's on). Right-click it to pick zoom (1.5×, 2×, 3×, 4×), lens size (small, medium, large) and shade. Settings are remembered.
 - A welcome window on first launch explains how to use it and how to allow Screen Recording. It's also **Settings…** in the menu.
 - **Open at Login** is on by default. Turn it off in Settings or the menu.
 - **Check for Updates** asks GitHub for the latest release and offers to download it. It also checks automatically about once a day; turn off **Check for Updates Automatically** in Settings or the menu. (GitHub version only: the App Store version is updated by the App Store.)
