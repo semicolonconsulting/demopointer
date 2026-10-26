@@ -19,6 +19,9 @@ final class MagnifierController: NSObject {
     private let cursor = CursorHider()
     private let ciContext = CIContext(options: [.cacheIntermediates: false])
 
+    /// Screenshot mode, for App Store screenshots: the lens stays up as if ⌘ were held. Turned on only by
+    /// launching with `-ScreenshotMode YES` (scripts/take-screenshots.sh does that).
+    private let screenshotMode = UserDefaults.standard.bool(forKey: "ScreenshotMode")
     private var timer: Timer?
     private var captureTask: Task<Void, Never>?
     private var capturingDisplayID: CGDirectDisplayID?
@@ -37,9 +40,9 @@ final class MagnifierController: NSObject {
     @objc private func tick() {
         let flags = NSEvent.modifierFlags.intersection(.deviceIndependentFlagsMask)
         // Only plain Command, so shortcuts like Cmd+Shift+4 don't pop the lens.
-        let held = settings.isEnabled
+        let held = screenshotMode || (settings.isEnabled
             && flags.contains(.command)
-            && flags.isDisjoint(with: [.shift, .option, .control])
+            && flags.isDisjoint(with: [.shift, .option, .control]))
 
         guard held else {
             lens.hide()

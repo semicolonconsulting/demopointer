@@ -2,14 +2,22 @@
 # Builds DemoPointer.app into ./build for local use, plus build/DemoPointer-<version>.dmg.
 # Needs Xcode 16 or later. Set NO_DMG=1 to skip the disk image.
 #
-# Signs ad-hoc by default. macOS ties the Screen Recording permission to the signature, so an
-# ad-hoc build loses the permission on every rebuild. Set SIGN_IDENTITY (and TEAM_ID) to an
-# "Apple Development" identity to keep it:
-#   SIGN_IDENTITY="Apple Development" TEAM_ID=ABCDE12345 ./scripts/build-app.sh
+# Signs with your "Apple Development" certificate when the keychain has one, so macOS keeps the Screen
+# Recording permission across rebuilds. Otherwise signs ad-hoc, and every rebuild needs the permission
+# granted again (scripts/fix-permission.sh). Override with SIGN_IDENTITY, e.g. SIGN_IDENTITY=- for ad-hoc.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 CONFIG="${CONFIG:-Release}"
+TEAM_ID="${TEAM_ID:-C6ZRF9KM22}"
+if [[ -z "${SIGN_IDENTITY:-}" ]]; then
+    if security find-identity -v -p codesigning | grep -q "Apple Development"; then
+        SIGN_IDENTITY="Apple Development"
+    else
+        SIGN_IDENTITY="-"
+    fi
+fi
+echo "Signing with: $SIGN_IDENTITY"
 DERIVED="build/DerivedData"
 
 mkdir -p build
@@ -21,8 +29,8 @@ if ! xcodebuild build \
     -derivedDataPath "$DERIVED" \
     -destination "generic/platform=macOS" \
     CODE_SIGN_STYLE=Manual \
-    CODE_SIGN_IDENTITY="${SIGN_IDENTITY:--}" \
-    DEVELOPMENT_TEAM="${TEAM_ID:-}" \
+    CODE_SIGN_IDENTITY="$SIGN_IDENTITY" \
+    DEVELOPMENT_TEAM="$TEAM_ID" \
     > "$LOG" 2>&1; then
     grep -E "error|failed|Failed" "$LOG" | tail -40 >&2
     echo "Build failed; full log in $LOG" >&2

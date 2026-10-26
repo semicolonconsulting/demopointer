@@ -21,11 +21,15 @@ enum LoginItem {
         return isEnabled
     }
 
-    /// Open at Login is on by default. Applied once, and only when running from an Applications
-    /// folder, so a copy opened straight from the disk image or Downloads doesn't register itself.
+    /// Open at Login is on by default in the GitHub build. Applied once, and only when running from an
+    /// Applications folder, so a copy opened straight from the disk image or Downloads doesn't register itself.
+    /// The App Store build leaves it off: App Review guideline 2.4.5 doesn't allow launching at login
+    /// without the user's consent, so there it's only the checkbox in the welcome window and the menu.
     static func applyDefaultIfNeeded() {
+        #if !APPSTORE
         guard !UserDefaults.standard.bool(forKey: defaultAppliedKey), isInApplicationsFolder else { return }
         set(true)
+        #endif
     }
 
     private static var isInApplicationsFolder: Bool {

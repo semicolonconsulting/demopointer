@@ -12,7 +12,9 @@ Both builds are sandboxed. They differ in one way:
 - **GitHub** (`Config/DemoPointer.entitlements`): adds outgoing network access for Check for Updates (`DemoPointer/Updates.swift`), which reads the latest GitHub release and offers its `.dmg`. Every release must attach `DemoPointer-<version>.dmg` and be tagged `v<version>`.
 - **App Store** (`Config/DemoPointer-AppStore.entitlements`, Swift condition `APPSTORE`): no network access and no updater, since the App Store updates the app and store apps may not update themselves.
 
-Open at Login is on by default (registered on first launch from an Applications folder). App Review guideline 2.4.5(iii) says Mac apps must not launch at login without consent. If review objects, make the App Store build default to off; the checkbox in the welcome window stays.
+Open at Login is on by default in the GitHub build (registered on first launch from an Applications folder). The App Store build leaves it off until the user turns it on, since App Review guideline 2.4.5(iii) doesn't allow launching at login without consent. The App Store build also keeps the pointer visible, because hiding it from a background app needs an undocumented macOS setting.
+
+The team ID `C6ZRF9KM22` (SEMICOLON CONSULTING K.K.) is set in the project. The listing text, review notes and screenshot plan are in [APP_STORE_LISTING.md](APP_STORE_LISTING.md).
 
 ## One-time setup
 
