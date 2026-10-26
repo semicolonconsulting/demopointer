@@ -23,11 +23,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         LoginItem.applyDefaultIfNeeded()
 
-        if !CGPreflightScreenCaptureAccess() {
+        let hasScreenRecording = CGPreflightScreenCaptureAccess()
+        if !hasScreenRecording {
             // Shows the system prompt the first time and adds Demo Pointer to the list in System Settings.
             _ = CGRequestScreenCaptureAccess()
         }
-        if !UserDefaults.standard.bool(forKey: "welcomed") {
+        // The welcome window opens on the first launch of each version (a new install or an update), and
+        // whenever Screen Recording isn't allowed yet, since the lens can't work without it.
+        if !SettingsWindow.hasWelcomedCurrentVersion || !hasScreenRecording {
             settingsWindow.show(title: "Welcome to Demo Pointer")
             didShowPermissionHelp = true
         }

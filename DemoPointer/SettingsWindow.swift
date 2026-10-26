@@ -40,9 +40,19 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
 
     // MARK: NSWindowDelegate
 
+    private static let welcomedVersionKey = "welcomedVersion"
+    private static var currentVersion: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
+    }
+
+    /// Whether the welcome window was closed in this version of the app.
+    static var hasWelcomedCurrentVersion: Bool {
+        UserDefaults.standard.string(forKey: welcomedVersionKey) == currentVersion
+    }
+
     /// It counts as seen once it's closed, so quitting before reading it shows it again next time.
     func windowWillClose(_ notification: Notification) {
-        UserDefaults.standard.set(true, forKey: "welcomed")
+        UserDefaults.standard.set(Self.currentVersion, forKey: Self.welcomedVersionKey)
         permissionTimer?.invalidate()
         permissionTimer = nil
     }
