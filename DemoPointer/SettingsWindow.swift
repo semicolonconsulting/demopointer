@@ -32,7 +32,8 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         startWatchingPermission()
     }
 
-    private func preparedWindow() -> NSWindow {
+    /// The window, built and up to date but not shown. appstore/Screenshots.swift draws it from here.
+    func preparedWindow() -> NSWindow {
         if window == nil { window = makeWindow() }
         update()
         return window!

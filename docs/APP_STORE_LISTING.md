@@ -103,25 +103,21 @@ No sign-in is needed, so leave "Sign-in required" unchecked.
 
 ## Screenshots
 
-Mac screenshots must be 16:10 at **1280×800, 1440×900, 2560×1600 or 2880×1800**, one to ten of them. Plan:
+Mac screenshots must be 16:10 at **1280×800, 1440×900, 2560×1600 or 2880×1800**, one to ten of them.
 
-| # | Shows | Caption (optional overlay) |
-| --- | --- | --- |
-| 1 | The lens over a busy app (a dashboard or spreadsheet) with Light shade | Hold ⌘ to magnify |
-| 2 | The lens at 3× with Medium shade over small text, such as a settings page | Make small details readable |
-| 3 | A video call window showing the shared screen with the lens | Your audience sees it too |
-| 4 | The welcome window | Set up in seconds |
-| 5 | The menu bar menu open (Zoom, Lens Size, Shade Screen) | Pick zoom, size and shade |
+`appstore/screenshots.sh` (after `scripts/build-app.sh`) draws five 2880×1800 screenshots into
+`build/appstore-screenshots/`, in upload order. The desktop, the demo apps and their numbers are made up, so nothing
+real appears. The menu bar icon and the welcome window come from the app's own code, as in the App Store build
+(pointer visible, no Check for Updates):
 
-Capturing them:
+| File | Caption |
+| --- | --- |
+| `1-magnify.png` | Hold ⌘ to magnify. The lens over a sales dashboard, with Light shade. |
+| `2-small-text.png` | Small details, big and clear. 3× on spreadsheet numbers, with Medium shade. |
+| `3-screen-share.png` | Your audience sees it too. The lens in a video call's shared screen. |
+| `4-welcome.png` | Set up in seconds. The welcome window. |
+| `5-menu.png` | One click away. The menu bar menu with Shade Screen open. |
 
-1. For the sharpest result, set the display to a Retina resolution (System Settings › Displays, the "Default"
-   option or one marked as Retina), so captures are at least 2880 pixels wide.
-2. Arrange the scene and close anything private.
-3. Run `scripts/take-screenshots.sh <name>`. Demo Pointer restarts in screenshot mode, where the lens stays up
-   as if ⌘ were held. Put the pointer on the spot within 5 seconds. The script saves 2880×1800 and 1440×900
-   versions in `build/screenshots/`, cropped to 16:10 from the center of the main display.
-4. For the welcome window and the menu (shots 4 and 5), use ⌘⇧4 or ⌘⇧5 and place the capture on a 16:10
-   canvas.
-
-Screenshot mode is a launch argument (`-ScreenshotMode YES`), not a setting, so it never turns on by itself.
+To capture real screenshots instead, `scripts/take-screenshots.sh <name>` restarts Demo Pointer in screenshot mode
+(the lens stays up as if ⌘ were held, via the `-ScreenshotMode YES` launch argument) and saves 16:10 crops of the
+main display in `build/screenshots/`. Use a Retina display resolution for sharp results.
