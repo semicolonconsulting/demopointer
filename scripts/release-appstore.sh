@@ -76,5 +76,5 @@ xcodebuild -exportArchive \
 if [[ "$destination" == "upload" ]]; then
     echo "Uploaded build $BUILD_NUMBER to App Store Connect"
 else
-    echo "Exported $OUT/DemoPointer.pkg"
+    echo "Exported $(ls "$OUT"/*.pkg)"
 fi
