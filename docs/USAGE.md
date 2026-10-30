@@ -11,7 +11,7 @@ Hold the Command (⌘) key and a magnifying lens follows your cursor. Let go and
 
 Get `DemoPointer-<version>.dmg` from the [Releases](https://github.com/semicolonconsulting/demopointer/releases) page. Open it, drag **DemoPointer** onto **Applications**, then open it from Applications.
 
-Releases aren't notarized by Apple yet, so the first launch is blocked with a message that macOS can't verify the app. Open System Settings › Privacy & Security, scroll down to the message about DemoPointer and click **Open Anyway**. You only need to do this once. Or run `xattr -dr com.apple.quarantine /Applications/DemoPointer.app`.
+Releases are notarized by Apple and open normally. If you received a copy that isn't, the first launch is blocked with a message that macOS can't verify the app. Open System Settings › Privacy & Security, scroll down to the message about DemoPointer and click **Open Anyway**. You only need to do this once. Or run `xattr -dr com.apple.quarantine /Applications/DemoPointer.app`.
 
 ## Features
 

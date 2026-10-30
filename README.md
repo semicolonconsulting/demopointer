@@ -48,7 +48,7 @@ Hold <kbd>⌘</kbd> and a magnifying lens follows your cursor. A tiny menu-bar a
 
 Download `DemoPointer-<version>.dmg` from [Releases](https://github.com/semicolonconsulting/demopointer/releases/latest), open it and drag **DemoPointer** onto **Applications**. Requires macOS 13 Ventura or later.
 
-The first launch asks for Screen Recording access, and GitHub builds aren't notarized yet, so macOS asks you to confirm once. [How to use](docs/USAGE.md) walks through both. A Mac App Store version is on its way.
+GitHub builds are notarized by Apple, so they open without a warning. The first launch asks for Screen Recording access, and [How to use](docs/USAGE.md) walks through it. A Mac App Store version is on its way.
 
 ### Documentation
 
