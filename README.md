@@ -1,72 +1,66 @@
-# Demo Pointer
+<img src="docs/assets/icon.png" width="100" align="left" alt="Demo Pointer icon">
 
-A tiny macOS menu-bar app for product demos: **hold the Command (⌘) key and a magnifying lens follows your cursor.** Let go and it fades away.
+### `Demo Pointer`
 
-<img width="616" height="350" alt="demopointer" src="https://github.com/user-attachments/assets/02134367-f6f9-4656-ba3a-cf6aafbc5ee6" />
+[![Latest release](https://img.shields.io/github/v/release/semicolonconsulting/demopointer?label=release)](https://github.com/semicolonconsulting/demopointer/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/semicolonconsulting/demopointer/total.svg)](https://github.com/semicolonconsulting/demopointer/releases)
+[![Build](https://github.com/semicolonconsulting/demopointer/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/semicolonconsulting/demopointer/actions/workflows/build.yml)
+[![macOS 13+](https://img.shields.io/badge/macOS-13%2B-blue?logo=apple)](docs/USAGE.md#requirements)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-- Lens is a real-time zoom of the screen under the cursor (ScreenCaptureKit, up to 60 fps).
-- Shows up in screen shares and recordings (Zoom, Meet, QuickTime), so your audience sees it too.
-- Only triggers on plain ⌘. ⌘ combined with Shift, Option or Control is ignored, so shortcuts like ⌘⇧4 don't pop the lens. (A quick ⌘C will flash it briefly.)
-- While the lens is shown, the mouse pointer is hidden (the lens marks where it is). GitHub version only: it relies on an undocumented macOS setting the App Store doesn't allow.
-- While the lens is shown, the rest of the screen is shaded so the magnified spot stands out. Pick Off, Light (default), Medium or Dark.
-- Click the menu-bar icon to turn it on or off (the circle is filled while it's on). Right-click it to pick zoom (1.5×, 2×, 3×, 4×), lens size (small, medium, large) and shade. Settings are remembered.
-- A welcome window on first launch explains how to use it and how to allow Screen Recording. It's also **Settings…** in the menu.
-- **Open at Login** is on by default. Turn it off in Settings or the menu.
-- **Check for Updates** asks GitHub for the latest release and offers to download it. It also checks automatically about once a day; turn off **Check for Updates Automatically** in Settings or the menu. (GitHub version only: the App Store version is updated by the App Store.)
-- Works on multiple displays; the lens follows the display the cursor is on.
+Hold <kbd>⌘</kbd> and a magnifying lens follows your cursor. A tiny menu-bar app for product demos, screen shares and recordings.
 
-## Requirements
+<div>
+  <a href="https://github.com/semicolonconsulting/demopointer/releases/latest">Download</a>
+  •
+  <a href="docs/USAGE.md">How to use</a>
+  •
+  <a href="docs/BUILDING.md">Build from source</a>
+  •
+  <a href="PRIVACY.md">Privacy</a>
+  •
+  <a href="https://github.com/semicolonconsulting/demopointer/releases">Release notes</a>
+</div>
 
-- macOS 13 Ventura or later
-- Xcode 16 or later to build
+<br>
 
-## Download
+<img src="docs/assets/screenshots/1-magnify.jpg" alt="Hold Command to magnify: a lens follows the pointer and the rest of the screen dims">
 
-Get `DemoPointer-<version>.dmg` from the [Releases](https://github.com/semicolonconsulting/demopointer/releases) page. Open it, drag **DemoPointer** onto **Applications**, then open it from Applications.
+### Why Demo Pointer
 
-Releases aren't notarized by Apple yet, so the first launch is blocked with a message that macOS can't verify the app. Open System Settings › Privacy & Security, scroll down to the message about DemoPointer and click **Open Anyway**. You only need to do this once. Or run `xattr -dr com.apple.quarantine /Applications/DemoPointer.app`.
+- **Hold ⌘, see the detail.** A live, 60 fps zoom of whatever is under the cursor. Let go and it fades away.
+- **Your audience sees it too.** The lens shows up in Zoom, Meet and Teams screen shares and in recordings.
+- **Spotlight the point.** The rest of the screen dims so the magnified spot stands out.
+- **Stays out of the way.** Lives in the menu bar, ignores ⌘ shortcuts like ⌘⇧4, and needs only Screen Recording permission.
 
-## Build and run
+<table>
+  <tr>
+    <td><img src="docs/assets/screenshots/2-small-text.jpg" alt="Read small text"></td>
+    <td><img src="docs/assets/screenshots/3-screen-share.jpg" alt="The lens shows up in screen shares"></td>
+  </tr>
+  <tr>
+    <td><img src="docs/assets/screenshots/5-menu.jpg" alt="Zoom, lens size and shade in the menu"></td>
+    <td><img src="docs/assets/screenshots/4-welcome.jpg" alt="Welcome window"></td>
+  </tr>
+</table>
 
-Open `DemoPointer.xcodeproj` in Xcode and run the **DemoPointer** scheme, or from the command line:
+### Install
 
-```sh
-./scripts/build-app.sh
-open build/DemoPointer-*.dmg
-```
+Download `DemoPointer-<version>.dmg` from [Releases](https://github.com/semicolonconsulting/demopointer/releases/latest), open it and drag **DemoPointer** onto **Applications**. Requires macOS 13 Ventura or later.
 
-The script builds the Release configuration with `xcodebuild`, signs it ad-hoc, copies it to `build/DemoPointer.app` (menu bar only, no Dock icon) and packs it into `build/DemoPointer-<version>.dmg` with `scripts/make-dmg.sh`. Laying out the DMG window uses Finder, so the first run asks to let your terminal control Finder; set `NO_DMG=1` to skip the DMG.
+The first launch asks for Screen Recording access, and GitHub builds aren't notarized yet, so macOS asks you to confirm once. [How to use](docs/USAGE.md) walks through both. A Mac App Store version is on its way.
 
-Every push also builds the app in GitHub Actions; the zipped `.app` is attached to the workflow run as the `DemoPointer` artifact.
+### Documentation
 
-Releasing to GitHub (Developer ID, notarized) and the Mac App Store is described in [docs/RELEASING.md](docs/RELEASING.md). The app icon is drawn by `scripts/make-icon.swift` (`swift scripts/make-icon.swift` regenerates it).
+- [How to use](docs/USAGE.md): features, settings, permissions and troubleshooting
+- [Build from source](docs/BUILDING.md): building with Xcode or the command line, and how it works
+- [Releasing](docs/RELEASING.md): GitHub and Mac App Store releases
+- [Privacy](PRIVACY.md): Demo Pointer never saves or sends what it captures
 
-## Permissions
+### Contributing
 
-| Permission | Needed? | Why |
-| --- | --- | --- |
-| **Screen Recording** (System Settings › Privacy & Security › Screen & System Audio Recording) | **Yes** | To capture the pixels under the cursor for the lens. |
-| Accessibility | No | |
-| Input Monitoring | No | The Command key is detected by polling the current modifier state, which needs no permission. |
+Found a bug or have an idea? Open an [issue](https://github.com/semicolonconsulting/demopointer/issues). Pull requests are welcome; see [Build from source](docs/BUILDING.md) to get started.
 
-On first launch macOS asks for Screen Recording access. Turn on **Demo Pointer**, then **quit and reopen** the app (macOS only applies the permission on relaunch). The menu has a **Screen Recording Settings…** shortcut.
-
-Notes:
-
-- While the lens is in use, macOS shows its purple screen-recording indicator in the menu bar. Demo Pointer stops capturing 30 seconds after you last held ⌘, and the indicator goes away.
-- macOS 15 Sequoia and later periodically re-confirm Screen Recording access with a prompt. Choose **Allow**.
-- With the default ad-hoc signature, macOS treats each rebuild as a new app, and the Screen Recording switch you turned on stops working. To avoid that, sign with your own identity: `SIGN_IDENTITY="Apple Development" TEAM_ID=ABCDE12345 ./scripts/build-app.sh`. If the permission gets stuck, remove Demo Pointer from the list in System Settings and add it again, or run `tccutil reset ScreenCapture consulting.semicolon.DemoPointer`.
-
-## Privacy
-
-Demo Pointer is sandboxed and never saves or sends what it captures. Its only network access is Check for Updates in the GitHub version, which asks GitHub for the latest release. The App Store version has no network access. See [PRIVACY.md](PRIVACY.md).
-
-## How it works
-
-- `MagnifierController` polls `NSEvent.modifierFlags` and `NSEvent.mouseLocation` 60 times a second. While ⌘ is held it crops the area under the cursor from the latest captured frame and hands it to the lens.
-- `ScreenCapturer` runs an `SCStream` of the display under the cursor, excluding Demo Pointer's own windows so the lens never magnifies itself.
-- `LensWindow` is a borderless, transparent, click-through window above everything else (including full-screen apps) that draws the circular lens with a white ring and shadow. The real cursor stays visible on top at the lens center.
-
-## License
+### License
 
 MIT. See [LICENSE](LICENSE).
