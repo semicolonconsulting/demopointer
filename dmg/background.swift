@@ -23,9 +23,9 @@ cg.scaleBy(x: 1, y: -1)
 NSGraphicsContext.current = NSGraphicsContext(cgContext: cg, flipped: true)
 
 // Finder draws icon labels black in Light Mode and white in Dark Mode, whatever the picture is.
-// A mid-tone teal, matching the app icon, keeps both readable.
-NSGradient(starting: NSColor(srgbRed: 0.16, green: 0.52, blue: 0.56, alpha: 1),
-           ending: NSColor(srgbRed: 0.12, green: 0.46, blue: 0.48, alpha: 1))!
+// A mid-tone orange, matching the app icon, keeps both readable.
+NSGradient(starting: NSColor(srgbRed: 0.80, green: 0.40, blue: 0.14, alpha: 1),
+           ending: NSColor(srgbRed: 0.72, green: 0.32, blue: 0.12, alpha: 1))!
     .draw(in: NSRect(origin: .zero, size: size), angle: 90)
 
 func text(_ string: String, size: CGFloat, weight: NSFont.Weight, alpha: CGFloat = 1,
