@@ -100,18 +100,25 @@ final class MagnifierController: NSObject {
             height: height
         )
 
-        // Fill anything beyond the screen edge with black.
-        let background = CIImage(color: .black).cropped(to: rect)
-        let cropped = frame.cropped(to: rect).composited(over: background)
-
         let scale = screen.backingScaleFactor
         let pixels = (settings.diameter * scale).rounded()
+        // The glass edge pulls in content from just outside the lens, so take a margin around it too.
+        let padding = (glassPull * LensWindow.bandWidth * scale * width / pixels).rounded(.up) + 2
+        let source = rect.insetBy(dx: -padding, dy: -padding)
+
+        // Fill anything beyond the screen edge with black.
+        let background = CIImage(color: .black).cropped(to: source)
+        let cropped = frame.cropped(to: source).composited(over: background)
+
         let magnified = cropped
             .transformed(by: CGAffineTransform(translationX: -rect.minX, y: -rect.minY))
             .transformed(by: CGAffineTransform(scaleX: pixels / width, y: pixels / height))
         let output = CGRect(x: 0, y: 0, width: pixels, height: pixels)
         return ciContext.createCGImage(glassEdge(magnified, in: output, scale: scale), from: output)
     }
+
+    /// How far the bevel reaches out at the rim, in bevel widths.
+    private let glassPull: CGFloat = 1.2
 
     /// Bends the image near the edge like a rounded glass bevel: untouched in the middle, then pulling in
     /// more and more of what lies just outside the lens towards the rim. The bevel catches a little light too.
@@ -125,7 +132,7 @@ final class MagnifierController: NSObject {
                 extent: rect,
                 roiCallback: { _, r in r.insetBy(dx: -bevel * 2, dy: -bevel * 2) },
                 image: image.clampedToExtent(),
-                arguments: [CIVector(cgPoint: center), radius, bevel, 1.2]
+                arguments: [CIVector(cgPoint: center), radius, bevel, glassPull]
             ) ?? image
         } else {
             refracted = torusEdge(image, center: center, radius: radius, band: bevel)

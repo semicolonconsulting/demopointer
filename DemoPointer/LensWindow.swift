@@ -17,8 +17,6 @@ final class LensWindow {
     /// Bright specular arcs, strongest top-left with a softer bounce bottom-right.
     private let specularLayer = CAGradientLayer()
     private let specularMask = CAShapeLayer()
-    /// Thin translucent outer rim.
-    private let rimLayer = CAShapeLayer()
     /// Pixels per point the layers are rendered at; follows the screen the lens is on.
     private var scale: CGFloat = 0
 
@@ -47,7 +45,6 @@ final class LensWindow {
         shadowLayer.shadowOffset = CGSize(width: 0, height: -6)
 
         imageLayer.masksToBounds = true
-        imageLayer.backgroundColor = NSColor.black.cgColor
         imageLayer.contentsGravity = .resize
         imageLayer.magnificationFilter = .linear
 
@@ -58,7 +55,8 @@ final class LensWindow {
             NSColor.white.withAlphaComponent(0.0).cgColor,
             NSColor.white.withAlphaComponent(0.35).cgColor,
         ]
-        specularLayer.locations = [0.05, 0.4, 0.65, 0.95]
+        // Narrow stops keep the light to the top-left and bottom-right arcs, with almost none on the sides.
+        specularLayer.locations = [0, 0.14, 0.86, 1]
         specularLayer.startPoint = CGPoint(x: 0.15, y: 0.85)
         specularLayer.endPoint = CGPoint(x: 0.85, y: 0.15)
         specularMask.fillColor = nil
@@ -66,11 +64,7 @@ final class LensWindow {
         specularMask.lineWidth = 1.25
         specularLayer.mask = specularMask
 
-        rimLayer.fillColor = nil
-        rimLayer.strokeColor = NSColor.white.withAlphaComponent(0.35).cgColor
-        rimLayer.lineWidth = 1
-
-        for layer in [shadowLayer, imageLayer, specularLayer, rimLayer] {
+        for layer in [shadowLayer, imageLayer, specularLayer] {
             view.layer?.addSublayer(layer)
         }
     }
@@ -96,9 +90,6 @@ final class LensWindow {
         let local = CGRect(x: 0, y: 0, width: diameter, height: diameter)
         specularMask.frame = local
         specularMask.path = CGPath(ellipseIn: local.insetBy(dx: 1.5, dy: 1.5), transform: nil)
-
-        rimLayer.frame = CGRect(x: 0, y: 0, width: side, height: side)
-        rimLayer.path = CGPath(ellipseIn: circle.insetBy(dx: 0.5, dy: 0.5), transform: nil)
         CATransaction.commit()
     }
 
@@ -109,14 +100,14 @@ final class LensWindow {
         updateScale()
     }
 
-    /// Added sublayers render at 1x unless told otherwise, which makes the rim look coarse on Retina screens.
+    /// Added sublayers render at 1x unless told otherwise, which makes the highlight look coarse on Retina screens.
     private func updateScale() {
         let newScale = window.screen?.backingScaleFactor ?? window.backingScaleFactor
         guard newScale != scale else { return }
         scale = newScale
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-        for layer in [shadowLayer, imageLayer, specularLayer, specularMask, rimLayer] {
+        for layer in [shadowLayer, imageLayer, specularLayer, specularMask] {
             layer.contentsScale = scale
         }
         CATransaction.commit()
