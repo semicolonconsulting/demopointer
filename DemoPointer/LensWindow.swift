@@ -15,18 +15,20 @@ final class LensWindow {
     private let bandWidth: CGFloat = 9
     /// The same image, zoomed a little more and shown only in the band, so the edge looks refracted.
     private let refractionLayer = CALayer()
-    private let refractionMask = CAShapeLayer()
+    private let refractionMask = CAGradientLayer()
     /// Soft frosted tint and inner shading across the band.
     private let bandLayer = CAGradientLayer()
-    private let bandMask = CAShapeLayer()
+    private let bandMask = CAGradientLayer()
     /// Faint rainbow fringe along the inside of the rim.
     private let fringeLayer = CAGradientLayer()
-    private let fringeMask = CAShapeLayer()
+    private let fringeMask = CAGradientLayer()
     /// Bright specular arcs, strongest top-left with a softer bounce bottom-right.
     private let specularLayer = CAGradientLayer()
-    private let specularMask = CAShapeLayer()
+    private let specularMask = CAGradientLayer()
     /// Thin translucent outer rim.
     private let rimLayer = CAShapeLayer()
+    /// Pixels per point the layers are rendered at; follows the screen the lens is on.
+    private var scale: CGFloat = 0
 
     private let fadeDuration: TimeInterval = 0.15
     private var isShown = false
@@ -60,7 +62,6 @@ final class LensWindow {
         refractionLayer.masksToBounds = true
         refractionLayer.contentsGravity = .resize
         refractionLayer.magnificationFilter = .linear
-        refractionMask.fillRule = .evenOdd
         refractionLayer.mask = refractionMask
 
         // Lighter towards the top, slightly darker towards the bottom, like light passing through glass.
@@ -72,7 +73,6 @@ final class LensWindow {
         bandLayer.locations = [0, 0.5, 1]
         bandLayer.startPoint = CGPoint(x: 0.5, y: 1)
         bandLayer.endPoint = CGPoint(x: 0.5, y: 0)
-        bandMask.fillRule = .evenOdd
         bandLayer.mask = bandMask
 
         fringeLayer.type = .conic
@@ -86,9 +86,6 @@ final class LensWindow {
             NSColor(srgbRed: 0.30, green: 1.00, blue: 0.55, alpha: 0.40),
             NSColor(srgbRed: 0.20, green: 0.75, blue: 1.00, alpha: 0.55),
         ].map(\.cgColor)
-        fringeMask.fillColor = nil
-        fringeMask.strokeColor = NSColor.white.cgColor
-        fringeMask.lineWidth = 2
         fringeLayer.mask = fringeMask
 
         // Diagonal: bright top-left, clear through the middle, a softer glint bottom-right.
@@ -101,10 +98,14 @@ final class LensWindow {
         specularLayer.locations = [0.05, 0.42, 0.62, 0.95]
         specularLayer.startPoint = CGPoint(x: 0.15, y: 0.85)
         specularLayer.endPoint = CGPoint(x: 0.85, y: 0.15)
-        specularMask.fillColor = nil
-        specularMask.strokeColor = NSColor.white.cgColor
-        specularMask.lineWidth = 2.5
         specularLayer.mask = specularMask
+
+        // The masks are radial gradients rather than stroked paths, so every ring fades in and out smoothly.
+        for mask in [refractionMask, bandMask, fringeMask, specularMask] {
+            mask.type = .radial
+            mask.startPoint = CGPoint(x: 0.5, y: 0.5)
+            mask.endPoint = CGPoint(x: 1, y: 1)
+        }
 
         rimLayer.fillColor = nil
         rimLayer.strokeColor = NSColor.white.withAlphaComponent(0.55).cgColor
@@ -132,32 +133,21 @@ final class LensWindow {
         imageLayer.frame = circle
         imageLayer.cornerRadius = diameter / 2
 
-        // Paths below are in each layer's own coordinates, where the circle fills the bounds.
-        let local = CGRect(x: 0, y: 0, width: diameter, height: diameter)
-        let band = CGMutablePath()
-        band.addEllipse(in: local)
-        band.addEllipse(in: local.insetBy(dx: bandWidth, dy: bandWidth))
-
-        // The refraction copy is zoomed about 6% more, then clipped back to the band.
+        // The refraction copy is zoomed about 6% more, then faded out towards the middle so only the band shows it.
         let zoom = diameter * 0.06
         refractionLayer.frame = circle.insetBy(dx: -zoom / 2, dy: -zoom / 2)
         refractionLayer.cornerRadius = refractionLayer.frame.width / 2
-        refractionMask.frame = refractionLayer.bounds
-        let refractionBand = CGMutablePath()
-        let inLayer = local.offsetBy(dx: zoom / 2, dy: zoom / 2)
-        refractionBand.addEllipse(in: inLayer)
-        refractionBand.addEllipse(in: inLayer.insetBy(dx: bandWidth, dy: bandWidth))
-        refractionMask.path = refractionBand
+        let inLayer = CGRect(x: zoom / 2, y: zoom / 2, width: diameter, height: diameter)
+        setRing(refractionMask, in: inLayer, stops: [(bandWidth + 2, 0), (bandWidth * 0.4, 1), (0, 1)])
 
         for layer in [bandLayer, fringeLayer, specularLayer] {
             layer.frame = circle
         }
-        bandMask.frame = local
-        bandMask.path = band
-        fringeMask.frame = local
-        fringeMask.path = CGPath(ellipseIn: local.insetBy(dx: 2.5, dy: 2.5), transform: nil)
-        specularMask.frame = local
-        specularMask.path = CGPath(ellipseIn: local.insetBy(dx: 1.5, dy: 1.5), transform: nil)
+        // Stops are (points in from the edge, opacity), from the middle outwards.
+        let local = CGRect(x: 0, y: 0, width: diameter, height: diameter)
+        setRing(bandMask, in: local, stops: [(bandWidth + 3, 0), (bandWidth * 0.5, 0.6), (1, 1), (0, 1)])
+        setRing(fringeMask, in: local, stops: [(6, 0), (3, 1), (1.5, 0)])
+        setRing(specularMask, in: local, stops: [(4, 0), (1.25, 1), (0, 0.5)])
 
         rimLayer.frame = CGRect(x: 0, y: 0, width: side, height: side)
         rimLayer.path = CGPath(ellipseIn: circle.insetBy(dx: 0.5, dy: 0.5), transform: nil)
@@ -168,6 +158,31 @@ final class LensWindow {
     func center(on point: NSPoint) {
         let side = diameter + margin * 2
         window.setFrameOrigin(NSPoint(x: (point.x - side / 2).rounded(), y: (point.y - side / 2).rounded()))
+        updateScale()
+    }
+
+    /// Added sublayers render at 1x unless told otherwise, which makes the rim look coarse on Retina screens.
+    private func updateScale() {
+        let newScale = window.screen?.backingScaleFactor ?? window.backingScaleFactor
+        guard newScale != scale else { return }
+        scale = newScale
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        for layer in [shadowLayer, imageLayer, refractionLayer, refractionMask, bandLayer, bandMask,
+                      fringeLayer, fringeMask, specularLayer, specularMask, rimLayer] {
+            layer.contentsScale = scale
+        }
+        CATransaction.commit()
+    }
+
+    /// Points a radial mask at the circle in `rect` and sets its opacity stops, given as distances in points
+    /// in from the circle's edge. The mask reaches 1pt past the edge so the outside fades to clear.
+    private func setRing(_ mask: CAGradientLayer, in rect: CGRect, stops: [(inset: CGFloat, alpha: CGFloat)]) {
+        let radius = rect.width / 2 + 1
+        mask.frame = rect.insetBy(dx: -1, dy: -1)
+        let all = stops + [(inset: -1, alpha: 0)]
+        mask.colors = all.map { NSColor.white.withAlphaComponent($0.alpha).cgColor }
+        mask.locations = all.map { NSNumber(value: Double(max(0, (radius - 1 - $0.inset) / radius))) }
     }
 
     func show(image: CGImage) {
