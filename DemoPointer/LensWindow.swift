@@ -5,11 +5,16 @@ import QuartzCore
 @MainActor
 final class LensWindow {
     private let window: NSWindow
-    /// Space around the circle for the drop shadow.
-    private let margin: CGFloat = 16
+    /// Space around the circle for the drop shadow, wide enough that the blur fades out before the window edge.
+    private let margin: CGFloat = 48
     private let shadowLayer = CALayer()
     private let imageLayer = CALayer()
-    private let ringLayer = CAShapeLayer()
+
+    /// Width of the glass bevel just inside the edge, where the image is refracted and lit
+    /// (see MagnifierController).
+    static let bandWidth: CGFloat = 18
+    /// Pixels per point the layers are rendered at; follows the screen the lens is on.
+    private var scale: CGFloat = 0
 
     private let fadeDuration: TimeInterval = 0.15
     private var isShown = false
@@ -31,22 +36,17 @@ final class LensWindow {
         window.contentView = view
 
         shadowLayer.shadowColor = NSColor.black.cgColor
-        shadowLayer.shadowOpacity = 0.45
-        shadowLayer.shadowRadius = 8
-        shadowLayer.shadowOffset = CGSize(width: 0, height: -3)
+        shadowLayer.shadowOpacity = 0.25
+        shadowLayer.shadowRadius = 12
+        shadowLayer.shadowOffset = CGSize(width: 0, height: -6)
 
         imageLayer.masksToBounds = true
-        imageLayer.backgroundColor = NSColor.black.cgColor
         imageLayer.contentsGravity = .resize
         imageLayer.magnificationFilter = .linear
 
-        ringLayer.fillColor = nil
-        ringLayer.strokeColor = NSColor.white.withAlphaComponent(0.9).cgColor
-        ringLayer.lineWidth = 3
-
-        view.layer?.addSublayer(shadowLayer)
-        view.layer?.addSublayer(imageLayer)
-        view.layer?.addSublayer(ringLayer)
+        for layer in [shadowLayer, imageLayer] {
+            view.layer?.addSublayer(layer)
+        }
     }
 
     func setDiameter(_ newDiameter: CGFloat) {
@@ -65,8 +65,7 @@ final class LensWindow {
         shadowLayer.shadowPath = path
         imageLayer.frame = circle
         imageLayer.cornerRadius = diameter / 2
-        ringLayer.frame = CGRect(x: 0, y: 0, width: side, height: side)
-        ringLayer.path = path
+
         CATransaction.commit()
     }
 
@@ -74,6 +73,20 @@ final class LensWindow {
     func center(on point: NSPoint) {
         let side = diameter + margin * 2
         window.setFrameOrigin(NSPoint(x: (point.x - side / 2).rounded(), y: (point.y - side / 2).rounded()))
+        updateScale()
+    }
+
+    /// Added sublayers render at 1x unless told otherwise, which makes edges look coarse on Retina screens.
+    private func updateScale() {
+        let newScale = window.screen?.backingScaleFactor ?? window.backingScaleFactor
+        guard newScale != scale else { return }
+        scale = newScale
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        for layer in [shadowLayer, imageLayer] {
+            layer.contentsScale = scale
+        }
+        CATransaction.commit()
     }
 
     func show(image: CGImage) {

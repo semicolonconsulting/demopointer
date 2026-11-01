@@ -1,5 +1,6 @@
 import AppKit
 import CoreImage
+import CoreImage.CIFilterBuiltins
 
 /// Polls the Command key and cursor position, and drives the lens while Command is held.
 ///
@@ -78,8 +79,8 @@ final class MagnifierController: NSObject {
         cursor.hide()
     }
 
-    /// Crops the region under the cursor out of the captured display frame.
-    /// The lens layer scales it up to the lens size.
+    /// Crops the region under the cursor out of the captured display frame, scales it up to the lens size
+    /// in pixels and bends the content near the edge like a ring of glass.
     private func magnifiedImage(from frame: CIImage, around mouse: NSPoint, on screen: NSScreen) -> CGImage? {
         let extent = frame.extent
         // Pixels per point. Both CIImage and Cocoa screen coordinates have a bottom-left origin.
@@ -99,10 +100,143 @@ final class MagnifierController: NSObject {
             height: height
         )
 
+        let scale = screen.backingScaleFactor
+        let pixels = (settings.diameter * scale).rounded()
+        // The glass edge pulls in content from just outside the lens, so take a margin around it too.
+        let padding = (glassPull * LensWindow.bandWidth * scale * width / pixels).rounded(.up) + 2
+        let source = rect.insetBy(dx: -padding, dy: -padding)
+
         // Fill anything beyond the screen edge with black.
-        let background = CIImage(color: .black).cropped(to: rect)
-        let cropped = frame.cropped(to: rect).composited(over: background)
-        return ciContext.createCGImage(cropped, from: rect)
+        let background = CIImage(color: .black).cropped(to: source)
+        let cropped = frame.cropped(to: source).composited(over: background)
+
+        let magnified = cropped
+            .transformed(by: CGAffineTransform(translationX: -rect.minX, y: -rect.minY))
+            .transformed(by: CGAffineTransform(scaleX: pixels / width, y: pixels / height))
+        let output = CGRect(x: 0, y: 0, width: pixels, height: pixels)
+        return ciContext.createCGImage(glassEdge(magnified, in: output, scale: scale), from: output)
+    }
+
+    /// How far the bevel reaches out at the rim, in bevel widths.
+    private let glassPull: CGFloat = 1.2
+
+    /// Bends the image near the edge like a rounded glass bevel: untouched in the middle, then pulling in
+    /// more and more of what lies just outside the lens towards the rim. The bevel catches a little light too.
+    private func glassEdge(_ image: CIImage, in rect: CGRect, scale: CGFloat) -> CIImage {
+        let bevel = LensWindow.bandWidth * scale
+        let radius = rect.width / 2
+        let center = CGPoint(x: rect.midX, y: rect.midY)
+        var refracted: CIImage
+        if #available(macOS 15, *), let kernel = Self.bevelKernel {
+            refracted = kernel.apply(
+                extent: rect,
+                roiCallback: { _, r in r.insetBy(dx: -bevel * 2, dy: -bevel * 2) },
+                image: image.clampedToExtent(),
+                arguments: [CIVector(cgPoint: center), radius, bevel, glassPull]
+            ) ?? image
+        } else {
+            refracted = torusEdge(image, center: center, radius: radius, band: bevel)
+        }
+
+        refracted = catchLight(refracted, center: center, radius: radius, scale: scale)
+        return refracted.cropped(to: rect)
+    }
+
+    /// Lights the rim with a brighter, more saturated copy of what's under it, so the highlight takes the
+    /// colour of the content rather than being white: a thin line strongest at the top-left, fainter at the
+    /// bottom-right and nearly gone on the sides, plus a faint glow across the bevel.
+    private func catchLight(_ image: CIImage, center: CGPoint, radius: CGFloat, scale: CGFloat) -> CIImage {
+        let exposure = CIFilter.exposureAdjust()
+        exposure.inputImage = image
+        exposure.ev = 1.3
+        let vivid = CIFilter.colorControls()
+        vivid.inputImage = exposure.outputImage
+        vivid.saturation = 1.4
+        guard let lit = vivid.outputImage else { return image }
+
+        let black = CIColor.black, white = CIColor.white
+        func ring(from r0: CGFloat, to r1: CGFloat, _ c0: CIColor, _ c1: CIColor) -> CIImage {
+            let g = CIFilter.radialGradient()
+            g.center = center
+            g.radius0 = Float(r0)
+            g.radius1 = Float(r1)
+            g.color0 = c0
+            g.color1 = c1
+            return g.outputImage ?? CIImage.empty()
+        }
+        // A soft line peaking 1.5pt inside the edge.
+        let peak = radius - 1.5 * scale
+        let line = ring(from: radius - 4 * scale, to: peak, black, white)
+            .applyingFilter("CIMultiplyCompositing", parameters: [kCIInputBackgroundImageKey: ring(from: peak, to: radius, white, black)])
+
+        // Light falls on the top-left and, more weakly, the bottom-right. Core Image's y axis points up.
+        func glint(towardX dx: CGFloat, y dy: CGFloat, strength: CGFloat) -> CIImage {
+            let g = CIFilter.smoothLinearGradient()
+            g.point0 = CGPoint(x: center.x + radius * 0.707 * dx, y: center.y + radius * 0.707 * dy)
+            g.point1 = CGPoint(x: center.x + radius * 0.495 * dx, y: center.y + radius * 0.495 * dy)
+            g.color0 = CIColor(red: strength, green: strength, blue: strength)
+            g.color1 = black
+            return g.outputImage ?? CIImage.empty()
+        }
+        let direction = glint(towardX: -1, y: 1, strength: 1)
+            .applyingFilter("CIAdditionCompositing", parameters: [kCIInputBackgroundImageKey: glint(towardX: 1, y: -1, strength: 0.5)])
+        let glow = ring(from: radius - LensWindow.bandWidth * scale, to: radius, black, CIColor(red: 0.12, green: 0.12, blue: 0.12))
+        let mask = line
+            .applyingFilter("CIMultiplyCompositing", parameters: [kCIInputBackgroundImageKey: direction])
+            .applyingFilter("CIAdditionCompositing", parameters: [kCIInputBackgroundImageKey: glow])
+
+        let blend = CIFilter.blendWithMask()
+        blend.inputImage = lit
+        blend.backgroundImage = image
+        blend.maskImage = mask
+        return blend.outputImage ?? image
+    }
+
+    /// Displacement for a glass bevel with a round profile: none where the bevel starts, steepest at the rim.
+    @available(macOS 15, *)
+    private static let bevelKernel: CIWarpKernel? = {
+        let source = """
+            #include <CoreImage/CoreImage.h>
+            using namespace metal;
+            [[stitchable]] float2 glassBevel(float2 center, float radius, float bevel, float strength,
+                                             coreimage::destination dest) {
+                float2 v = dest.coord() - center;
+                float r = length(v);
+                float t = clamp((r - (radius - bevel)) / bevel, 0.0, 1.0);
+                float pull = strength * bevel * (1.0 - sqrt(1.0 - t * t));
+                return center + v * ((r + pull) / max(r, 0.0001));
+            }
+            """
+        do {
+            return try CIKernel.kernels(withMetalString: source).first as? CIWarpKernel
+        } catch {
+            NSLog("DemoPointer: could not build the glass kernel: \(error.localizedDescription)")
+            return nil
+        }
+    }()
+
+    /// Before macOS 15, approximates the bevel with the built-in torus lens, faded in from the middle.
+    private func torusEdge(_ image: CIImage, center: CGPoint, radius: CGFloat, band: CGFloat) -> CIImage {
+        let torus = CIFilter.torusLensDistortion()
+        torus.inputImage = image.clampedToExtent()
+        torus.center = center
+        torus.radius = Float(radius - band / 2)
+        torus.width = Float(band)
+        torus.refraction = 1.6
+        guard let refracted = torus.outputImage else { return image }
+
+        // Fade from the plain image into the refracted ring over the inner part of the band, so there's no seam.
+        let fade = CIFilter.radialGradient()
+        fade.center = center
+        fade.radius0 = Float(radius - band)
+        fade.radius1 = Float(radius - band * 0.3)
+        fade.color0 = CIColor(red: 0, green: 0, blue: 0, alpha: 0)
+        fade.color1 = .white
+        let blend = CIFilter.blendWithAlphaMask()
+        blend.inputImage = refracted
+        blend.backgroundImage = image
+        blend.maskImage = fade.outputImage
+        return blend.outputImage ?? image
     }
 
     private func ensureCapture(displayID: CGDirectDisplayID, scale: CGFloat) {

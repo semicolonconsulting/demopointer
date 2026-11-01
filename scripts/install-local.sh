@@ -11,7 +11,13 @@ osascript -e 'quit app "DemoPointer"' 2>/dev/null || true
 sleep 1
 rm -rf /Applications/DemoPointer.app
 ditto build/DemoPointer.app /Applications/DemoPointer.app
+LSREGISTER=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
+# Other registered copies with the same bundle ID (older builds under build/) can keep macOS showing their
+# icon in Settings, Raycast and the like, so unregister them and keep only the installed app.
+"$LSREGISTER" -dump | sed -nE 's/^path: +(.*DemoPointer\.app) \(0x[0-9a-f]+\)$/\1/p' | sort -u | while IFS= read -r copy; do
+    [[ "$copy" == "$PWD/build/"* ]] && "$LSREGISTER" -u "$copy" 2>/dev/null || true
+done
 touch /Applications/DemoPointer.app
-/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f /Applications/DemoPointer.app
+"$LSREGISTER" -f /Applications/DemoPointer.app
 open /Applications/DemoPointer.app
 echo "Installed and opened /Applications/DemoPointer.app"
