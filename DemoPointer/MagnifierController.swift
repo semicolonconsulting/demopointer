@@ -113,29 +113,81 @@ final class MagnifierController: NSObject {
         return ciContext.createCGImage(glassEdge(magnified, in: output, scale: scale), from: output)
     }
 
-    /// Refracts the image through a glass ring that runs around the inside of the lens edge.
+    /// Bends the image near the edge like a rounded glass bevel: untouched in the middle, then pulling in
+    /// more and more of what lies just outside the lens towards the rim. The bevel catches a little light too.
     private func glassEdge(_ image: CIImage, in rect: CGRect, scale: CGFloat) -> CIImage {
-        let band = LensWindow.bandWidth * scale
+        let bevel = LensWindow.bandWidth * scale
+        let radius = rect.width / 2
+        let center = CGPoint(x: rect.midX, y: rect.midY)
+        var refracted: CIImage
+        if #available(macOS 15, *), let kernel = Self.bevelKernel {
+            refracted = kernel.apply(
+                extent: rect,
+                roiCallback: { _, r in r.insetBy(dx: -bevel * 2, dy: -bevel * 2) },
+                image: image.clampedToExtent(),
+                arguments: [CIVector(cgPoint: center), radius, bevel, 1.2]
+            ) ?? image
+        } else {
+            refracted = torusEdge(image, center: center, radius: radius, band: bevel)
+        }
+
+        let sheen = CIFilter.radialGradient()
+        sheen.center = center
+        sheen.radius0 = Float(radius - bevel)
+        sheen.radius1 = Float(radius)
+        sheen.color0 = CIColor(red: 1, green: 1, blue: 1, alpha: 0)
+        sheen.color1 = CIColor(red: 1, green: 1, blue: 1, alpha: 0.08)
+        if let light = sheen.outputImage {
+            refracted = light.composited(over: refracted)
+        }
+        return refracted.cropped(to: rect)
+    }
+
+    /// Displacement for a glass bevel with a round profile: none where the bevel starts, steepest at the rim.
+    @available(macOS 15, *)
+    private static let bevelKernel: CIWarpKernel? = {
+        let source = """
+            #include <CoreImage/CoreImage.h>
+            using namespace metal;
+            [[stitchable]] float2 glassBevel(float2 center, float radius, float bevel, float strength,
+                                             coreimage::destination dest) {
+                float2 v = dest.coord() - center;
+                float r = length(v);
+                float t = clamp((r - (radius - bevel)) / bevel, 0.0, 1.0);
+                float pull = strength * bevel * (1.0 - sqrt(1.0 - t * t));
+                return center + v * ((r + pull) / max(r, 0.0001));
+            }
+            """
+        do {
+            return try CIKernel.kernels(withMetalString: source).first as? CIWarpKernel
+        } catch {
+            NSLog("DemoPointer: could not build the glass kernel: \(error.localizedDescription)")
+            return nil
+        }
+    }()
+
+    /// Before macOS 15, approximates the bevel with the built-in torus lens, faded in from the middle.
+    private func torusEdge(_ image: CIImage, center: CGPoint, radius: CGFloat, band: CGFloat) -> CIImage {
         let torus = CIFilter.torusLensDistortion()
         torus.inputImage = image.clampedToExtent()
-        torus.center = CGPoint(x: rect.midX, y: rect.midY)
-        torus.radius = Float(rect.width / 2 - band / 2)
+        torus.center = center
+        torus.radius = Float(radius - band / 2)
         torus.width = Float(band)
         torus.refraction = 1.6
         guard let refracted = torus.outputImage else { return image }
 
         // Fade from the plain image into the refracted ring over the inner part of the band, so there's no seam.
         let fade = CIFilter.radialGradient()
-        fade.center = torus.center
-        fade.radius0 = Float(rect.width / 2 - band)
-        fade.radius1 = Float(rect.width / 2 - band * 0.3)
+        fade.center = center
+        fade.radius0 = Float(radius - band)
+        fade.radius1 = Float(radius - band * 0.3)
         fade.color0 = CIColor(red: 0, green: 0, blue: 0, alpha: 0)
         fade.color1 = .white
         let blend = CIFilter.blendWithAlphaMask()
         blend.inputImage = refracted
         blend.backgroundImage = image
         blend.maskImage = fade.outputImage
-        return blend.outputImage?.cropped(to: rect) ?? image
+        return blend.outputImage ?? image
     }
 
     private func ensureCapture(displayID: CGDirectDisplayID, scale: CGFloat) {
