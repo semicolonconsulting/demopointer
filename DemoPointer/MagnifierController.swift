@@ -138,16 +138,58 @@ final class MagnifierController: NSObject {
             refracted = torusEdge(image, center: center, radius: radius, band: bevel)
         }
 
-        let sheen = CIFilter.radialGradient()
-        sheen.center = center
-        sheen.radius0 = Float(radius - bevel)
-        sheen.radius1 = Float(radius)
-        sheen.color0 = CIColor(red: 1, green: 1, blue: 1, alpha: 0)
-        sheen.color1 = CIColor(red: 1, green: 1, blue: 1, alpha: 0.08)
-        if let light = sheen.outputImage {
-            refracted = light.composited(over: refracted)
-        }
+        refracted = catchLight(refracted, center: center, radius: radius, scale: scale)
         return refracted.cropped(to: rect)
+    }
+
+    /// Lights the rim with a brighter, more saturated copy of what's under it, so the highlight takes the
+    /// colour of the content rather than being white: a thin line strongest at the top-left, fainter at the
+    /// bottom-right and nearly gone on the sides, plus a faint glow across the bevel.
+    private func catchLight(_ image: CIImage, center: CGPoint, radius: CGFloat, scale: CGFloat) -> CIImage {
+        let exposure = CIFilter.exposureAdjust()
+        exposure.inputImage = image
+        exposure.ev = 1.3
+        let vivid = CIFilter.colorControls()
+        vivid.inputImage = exposure.outputImage
+        vivid.saturation = 1.4
+        guard let lit = vivid.outputImage else { return image }
+
+        let black = CIColor.black, white = CIColor.white
+        func ring(from r0: CGFloat, to r1: CGFloat, _ c0: CIColor, _ c1: CIColor) -> CIImage {
+            let g = CIFilter.radialGradient()
+            g.center = center
+            g.radius0 = Float(r0)
+            g.radius1 = Float(r1)
+            g.color0 = c0
+            g.color1 = c1
+            return g.outputImage ?? CIImage.empty()
+        }
+        // A soft line peaking 1.5pt inside the edge.
+        let peak = radius - 1.5 * scale
+        let line = ring(from: radius - 4 * scale, to: peak, black, white)
+            .applyingFilter("CIMultiplyCompositing", parameters: [kCIInputBackgroundImageKey: ring(from: peak, to: radius, white, black)])
+
+        // Light falls on the top-left and, more weakly, the bottom-right. Core Image's y axis points up.
+        func glint(towardX dx: CGFloat, y dy: CGFloat, strength: CGFloat) -> CIImage {
+            let g = CIFilter.smoothLinearGradient()
+            g.point0 = CGPoint(x: center.x + radius * 0.707 * dx, y: center.y + radius * 0.707 * dy)
+            g.point1 = CGPoint(x: center.x + radius * 0.495 * dx, y: center.y + radius * 0.495 * dy)
+            g.color0 = CIColor(red: strength, green: strength, blue: strength)
+            g.color1 = black
+            return g.outputImage ?? CIImage.empty()
+        }
+        let direction = glint(towardX: -1, y: 1, strength: 1)
+            .applyingFilter("CIAdditionCompositing", parameters: [kCIInputBackgroundImageKey: glint(towardX: 1, y: -1, strength: 0.5)])
+        let glow = ring(from: radius - LensWindow.bandWidth * scale, to: radius, black, CIColor(red: 0.12, green: 0.12, blue: 0.12))
+        let mask = line
+            .applyingFilter("CIMultiplyCompositing", parameters: [kCIInputBackgroundImageKey: direction])
+            .applyingFilter("CIAdditionCompositing", parameters: [kCIInputBackgroundImageKey: glow])
+
+        let blend = CIFilter.blendWithMask()
+        blend.inputImage = lit
+        blend.backgroundImage = image
+        blend.maskImage = mask
+        return blend.outputImage ?? image
     }
 
     /// Displacement for a glass bevel with a round profile: none where the bevel starts, steepest at the rim.
