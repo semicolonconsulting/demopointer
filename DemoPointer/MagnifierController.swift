@@ -122,7 +122,20 @@ final class MagnifierController: NSObject {
         torus.radius = Float(rect.width / 2 - band / 2)
         torus.width = Float(band)
         torus.refraction = 1.6
-        return torus.outputImage?.cropped(to: rect) ?? image
+        guard let refracted = torus.outputImage else { return image }
+
+        // Fade from the plain image into the refracted ring over the inner part of the band, so there's no seam.
+        let fade = CIFilter.radialGradient()
+        fade.center = torus.center
+        fade.radius0 = Float(rect.width / 2 - band)
+        fade.radius1 = Float(rect.width / 2 - band * 0.3)
+        fade.color0 = CIColor(red: 0, green: 0, blue: 0, alpha: 0)
+        fade.color1 = .white
+        let blend = CIFilter.blendWithAlphaMask()
+        blend.inputImage = refracted
+        blend.backgroundImage = image
+        blend.maskImage = fade.outputImage
+        return blend.outputImage?.cropped(to: rect) ?? image
     }
 
     private func ensureCapture(displayID: CGDirectDisplayID, scale: CGFloat) {
