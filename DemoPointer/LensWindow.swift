@@ -13,7 +13,7 @@ final class LensWindow {
     // Liquid Glass style rim. The refraction itself is in the image (see MagnifierController); these layers
     // only add light on top of it.
     /// Width of the glass band just inside the edge, where the image is refracted.
-    static let bandWidth: CGFloat = 14
+    static let bandWidth: CGFloat = 18
     /// Bright specular arcs, strongest top-left with a softer bounce bottom-right.
     private let specularLayer = CAGradientLayer()
     private let specularMask = CAShapeLayer()
@@ -42,7 +42,7 @@ final class LensWindow {
         window.contentView = view
 
         shadowLayer.shadowColor = NSColor.black.cgColor
-        shadowLayer.shadowOpacity = 0.35
+        shadowLayer.shadowOpacity = 0.25
         shadowLayer.shadowRadius = 12
         shadowLayer.shadowOffset = CGSize(width: 0, height: -6)
 
@@ -53,21 +53,21 @@ final class LensWindow {
 
         // Diagonal: bright top-left, clear through the middle, a softer glint bottom-right.
         specularLayer.colors = [
-            NSColor.white.withAlphaComponent(0.85).cgColor,
+            NSColor.white.withAlphaComponent(0.75).cgColor,
             NSColor.white.withAlphaComponent(0.0).cgColor,
             NSColor.white.withAlphaComponent(0.0).cgColor,
-            NSColor.white.withAlphaComponent(0.4).cgColor,
+            NSColor.white.withAlphaComponent(0.35).cgColor,
         ]
         specularLayer.locations = [0.05, 0.4, 0.65, 0.95]
         specularLayer.startPoint = CGPoint(x: 0.15, y: 0.85)
         specularLayer.endPoint = CGPoint(x: 0.85, y: 0.15)
         specularMask.fillColor = nil
         specularMask.strokeColor = NSColor.white.cgColor
-        specularMask.lineWidth = 1.5
+        specularMask.lineWidth = 1.25
         specularLayer.mask = specularMask
 
         rimLayer.fillColor = nil
-        rimLayer.strokeColor = NSColor.white.withAlphaComponent(0.45).cgColor
+        rimLayer.strokeColor = NSColor.white.withAlphaComponent(0.35).cgColor
         rimLayer.lineWidth = 1
 
         for layer in [shadowLayer, imageLayer, specularLayer, rimLayer] {
