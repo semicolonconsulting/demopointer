@@ -1,5 +1,6 @@
 import AppKit
 import CoreImage
+import CoreImage.CIFilterBuiltins
 
 /// Polls the Command key and cursor position, and drives the lens while Command is held.
 ///
@@ -78,8 +79,8 @@ final class MagnifierController: NSObject {
         cursor.hide()
     }
 
-    /// Crops the region under the cursor out of the captured display frame.
-    /// The lens layer scales it up to the lens size.
+    /// Crops the region under the cursor out of the captured display frame, scales it up to the lens size
+    /// in pixels and bends the content near the edge like a ring of glass.
     private func magnifiedImage(from frame: CIImage, around mouse: NSPoint, on screen: NSScreen) -> CGImage? {
         let extent = frame.extent
         // Pixels per point. Both CIImage and Cocoa screen coordinates have a bottom-left origin.
@@ -102,7 +103,26 @@ final class MagnifierController: NSObject {
         // Fill anything beyond the screen edge with black.
         let background = CIImage(color: .black).cropped(to: rect)
         let cropped = frame.cropped(to: rect).composited(over: background)
-        return ciContext.createCGImage(cropped, from: rect)
+
+        let scale = screen.backingScaleFactor
+        let pixels = (settings.diameter * scale).rounded()
+        let magnified = cropped
+            .transformed(by: CGAffineTransform(translationX: -rect.minX, y: -rect.minY))
+            .transformed(by: CGAffineTransform(scaleX: pixels / width, y: pixels / height))
+        let output = CGRect(x: 0, y: 0, width: pixels, height: pixels)
+        return ciContext.createCGImage(glassEdge(magnified, in: output, scale: scale), from: output)
+    }
+
+    /// Refracts the image through a glass ring that runs around the inside of the lens edge.
+    private func glassEdge(_ image: CIImage, in rect: CGRect, scale: CGFloat) -> CIImage {
+        let band = LensWindow.bandWidth * scale
+        let torus = CIFilter.torusLensDistortion()
+        torus.inputImage = image.clampedToExtent()
+        torus.center = CGPoint(x: rect.midX, y: rect.midY)
+        torus.radius = Float(rect.width / 2 - band / 2)
+        torus.width = Float(band)
+        torus.refraction = 1.6
+        return torus.outputImage?.cropped(to: rect) ?? image
     }
 
     private func ensureCapture(displayID: CGDirectDisplayID, scale: CGFloat) {
