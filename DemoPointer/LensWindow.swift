@@ -10,13 +10,9 @@ final class LensWindow {
     private let shadowLayer = CALayer()
     private let imageLayer = CALayer()
 
-    // Liquid Glass style rim. The refraction itself is in the image (see MagnifierController); these layers
-    // only add light on top of it.
-    /// Width of the glass band just inside the edge, where the image is refracted.
+    /// Width of the glass bevel just inside the edge, where the image is refracted and lit
+    /// (see MagnifierController).
     static let bandWidth: CGFloat = 18
-    /// Bright specular arcs, strongest top-left with a softer bounce bottom-right.
-    private let specularLayer = CAGradientLayer()
-    private let specularMask = CAShapeLayer()
     /// Pixels per point the layers are rendered at; follows the screen the lens is on.
     private var scale: CGFloat = 0
 
@@ -48,23 +44,7 @@ final class LensWindow {
         imageLayer.contentsGravity = .resize
         imageLayer.magnificationFilter = .linear
 
-        // Diagonal: bright top-left, clear through the middle, a softer glint bottom-right.
-        specularLayer.colors = [
-            NSColor.white.withAlphaComponent(0.75).cgColor,
-            NSColor.white.withAlphaComponent(0.0).cgColor,
-            NSColor.white.withAlphaComponent(0.0).cgColor,
-            NSColor.white.withAlphaComponent(0.35).cgColor,
-        ]
-        // Narrow stops keep the light to the top-left and bottom-right arcs, with almost none on the sides.
-        specularLayer.locations = [0, 0.14, 0.86, 1]
-        specularLayer.startPoint = CGPoint(x: 0.15, y: 0.85)
-        specularLayer.endPoint = CGPoint(x: 0.85, y: 0.15)
-        specularMask.fillColor = nil
-        specularMask.strokeColor = NSColor.white.cgColor
-        specularMask.lineWidth = 1.25
-        specularLayer.mask = specularMask
-
-        for layer in [shadowLayer, imageLayer, specularLayer] {
+        for layer in [shadowLayer, imageLayer] {
             view.layer?.addSublayer(layer)
         }
     }
@@ -86,10 +66,6 @@ final class LensWindow {
         imageLayer.frame = circle
         imageLayer.cornerRadius = diameter / 2
 
-        specularLayer.frame = circle
-        let local = CGRect(x: 0, y: 0, width: diameter, height: diameter)
-        specularMask.frame = local
-        specularMask.path = CGPath(ellipseIn: local.insetBy(dx: 1.5, dy: 1.5), transform: nil)
         CATransaction.commit()
     }
 
@@ -100,14 +76,14 @@ final class LensWindow {
         updateScale()
     }
 
-    /// Added sublayers render at 1x unless told otherwise, which makes the highlight look coarse on Retina screens.
+    /// Added sublayers render at 1x unless told otherwise, which makes edges look coarse on Retina screens.
     private func updateScale() {
         let newScale = window.screen?.backingScaleFactor ?? window.backingScaleFactor
         guard newScale != scale else { return }
         scale = newScale
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-        for layer in [shadowLayer, imageLayer, specularLayer, specularMask] {
+        for layer in [shadowLayer, imageLayer] {
             layer.contentsScale = scale
         }
         CATransaction.commit()
