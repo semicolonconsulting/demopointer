@@ -21,10 +21,11 @@ Releases are notarized by Apple and open normally. If you received a copy that i
 - While the lens is shown, the mouse pointer is hidden (the lens marks where it is). GitHub version only: it relies on an undocumented macOS setting the App Store doesn't allow.
 - While the lens is shown, the rest of the screen is shaded so the magnified spot stands out. Pick Off, Light (default), Medium or Dark.
 - Works on multiple displays; the lens follows the display the cursor is on.
+- Hold Option (⌥) by itself and move the pointer to draw a red line on the screen. Hold Shift (⇧) too to pull out an arrow from where you pressed it. Press Control (⌃) to clear it. The drawing stays until you clear it, shows up in screen shares, and the lens magnifies it. Turn off **Draw While Holding ⌥** in Settings or the menu if you use Option a lot.
 
 ## Settings
 
-- Click the menu-bar icon to turn Demo Pointer on or off (the circle is filled while it's on). Right-click it to pick zoom (1.5×, 2×, 3×, 4×), lens size (small, medium, large) and shade. Settings are remembered.
+- Click the menu-bar icon to turn Demo Pointer on or off (the circle is filled while it's on). Right-click it to pick zoom (1.5×, 2×, 3×, 4×), lens size (small, medium, large: 160, 276 and 468 pt across) and shade. Settings are remembered.
 - A welcome window on first launch explains how to use it and how to allow Screen Recording. It's also **Settings…** in the menu.
 - **Open at Login** is on by default. Turn it off in Settings or the menu.
 - **Check for Updates** asks GitHub for the latest release and offers to download it. It also checks automatically about once a day; turn off **Check for Updates Automatically** in Settings or the menu. (GitHub version only: the App Store version is updated by the App Store.)

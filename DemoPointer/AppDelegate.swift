@@ -77,6 +77,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(.separator())
 
         menu.addItem(item("Magnify While Holding ⌘", #selector(toggleEnabled), on: settings.isEnabled))
+        menu.addItem(item("Draw While Holding ⌥", #selector(toggleDrawing), on: settings.drawsWithOption))
         menu.addItem(.separator())
 
         let zoomMenu = NSMenu()
@@ -135,6 +136,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         settings.isEnabled.toggle()
         refreshStatusItem()
     }
+    @objc private func toggleDrawing() { settings.drawsWithOption.toggle() }
     @objc private func toggleOpenAtLogin() { LoginItem.set(!LoginItem.isEnabled) }
     @objc private func openScreenRecordingSettings() { SettingsWindow.openScreenRecordingSettings() }
     @objc private func openPrivacyPolicy() { NSWorkspace.shared.open(privacyPolicyURL) }

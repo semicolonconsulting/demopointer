@@ -31,6 +31,7 @@ Hold <kbd>⌘</kbd> and a magnifying lens follows your cursor. A tiny menu-bar a
 - **Hold ⌘, see the detail.** A live, 60 fps zoom of whatever is under the cursor. Let go and it fades away.
 - **Your audience sees it too.** The lens shows up in Zoom, Meet and Teams screen shares and in recordings.
 - **Spotlight the point.** The rest of the screen dims so the magnified spot stands out.
+- **Draw on the screen.** Hold ⌥ and move the pointer to draw, add ⇧ for an arrow, press ⌃ to clear.
 - **Stays out of the way.** Lives in the menu bar, ignores ⌘ shortcuts like ⌘⇧4, and needs only Screen Recording permission.
 
 <table>
