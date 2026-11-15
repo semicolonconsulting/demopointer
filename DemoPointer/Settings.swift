@@ -7,8 +7,8 @@ final class Settings {
     static let zoomLevels: [Double] = [1.5, 2, 3, 4]
     static let sizes: [(name: String, diameter: Double)] = [
         ("Small", 160),
-        ("Medium", 240),
-        ("Large", 360),
+        ("Medium", 276),
+        ("Large", 468),
     ]
     /// How dark the rest of the screen gets while the lens is shown.
     static let shades: [(name: String, opacity: Double)] = [
@@ -37,7 +37,13 @@ final class Settings {
     var diameter: Double {
         get {
             let value = defaults.double(forKey: "diameter")
-            return value > 0 ? value : 240
+            // Medium was 240 and Large 360 before they grew by 15% and 30%.
+            switch value {
+            case 240: return 276
+            case 360: return 468
+            case let value where value > 0: return value
+            default: return 276
+            }
         }
         set { defaults.set(newValue, forKey: "diameter") }
     }
