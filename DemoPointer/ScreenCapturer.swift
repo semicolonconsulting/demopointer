@@ -26,7 +26,8 @@ final class ScreenCapturer: NSObject, SCStreamOutput, SCStreamDelegate {
         return latest
     }
 
-    func start(displayID: CGDirectDisplayID, scale: CGFloat) async throws {
+    /// `includedWindowIDs` are Demo Pointer windows to capture anyway, like the drawing overlay.
+    func start(displayID: CGDirectDisplayID, scale: CGFloat, includedWindowIDs: [CGWindowID] = []) async throws {
         await stop()
 
         // Include off-screen windows: the lens is hidden when capture starts, and an app with no
@@ -37,7 +38,8 @@ final class ScreenCapturer: NSObject, SCStreamOutput, SCStreamDelegate {
         }
         let pid = ProcessInfo.processInfo.processIdentifier
         let ownApp = content.applications.filter { $0.processID == pid }
-        let filter = SCContentFilter(display: display, excludingApplications: ownApp, exceptingWindows: [])
+        let filter = SCContentFilter(display: display, excludingApplications: ownApp,
+                                    exceptingWindows: content.windows.filter { includedWindowIDs.contains($0.windowID) })
 
         let config = SCStreamConfiguration()
         config.width = Int(CGFloat(display.width) * scale)

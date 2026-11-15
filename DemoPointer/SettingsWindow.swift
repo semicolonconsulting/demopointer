@@ -14,6 +14,7 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
     private let zoomPopUp = NSPopUpButton()
     private let sizePopUp = NSPopUpButton()
     private let shadePopUp = NSPopUpButton()
+    private let drawBox = NSButton(checkboxWithTitle: "Draw While Holding ⌥ Option", target: nil, action: nil)
     private let loginBox = NSButton(checkboxWithTitle: "Open at Login", target: nil, action: nil)
     #if !APPSTORE
     private let updatesBox = NSButton(checkboxWithTitle: "Check for Updates Automatically", target: nil, action: nil)
@@ -67,6 +68,7 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         zoomPopUp.selectItem(at: Settings.zoomLevels.firstIndex(of: settings.zoom) ?? 1)
         sizePopUp.selectItem(at: Settings.sizes.firstIndex { $0.diameter == settings.diameter } ?? 1)
         shadePopUp.selectItem(at: Settings.shades.firstIndex { $0.opacity == settings.shadeOpacity } ?? 1)
+        drawBox.state = settings.drawsWithOption ? .on : .off
         loginBox.state = LoginItem.isEnabled ? .on : .off
         #if !APPSTORE
         updatesBox.state = Updates.checksAutomatically ? .on : .off
@@ -102,6 +104,8 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
     @objc private func selectZoom() { settings.zoom = Settings.zoomLevels[zoomPopUp.indexOfSelectedItem] }
     @objc private func selectSize() { settings.diameter = Settings.sizes[sizePopUp.indexOfSelectedItem].diameter }
     @objc private func selectShade() { settings.shadeOpacity = Settings.shades[shadePopUp.indexOfSelectedItem].opacity }
+
+    @objc private func toggleDrawing() { settings.drawsWithOption = drawBox.state == .on }
 
     @objc private func toggleLogin() {
         LoginItem.set(loginBox.state == .on)
@@ -165,6 +169,9 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
             (symbol("command"),
              "Hold the ⌘ Command key by itself and a magnifying lens follows your pointer. Let go and it fades away. "
                 + "It shows up in screen shares and recordings too."),
+            (symbol("scribble"),
+             "Hold the ⌥ Option key by itself and move the pointer to draw on the screen. "
+                + "Press ⌃ Control to clear the drawing."),
             (symbol("menubar.rectangle"),
              "Click the Demo Pointer icon in the menu bar to turn it on or off: the circle is filled while it's on. "
                 + "Right-click it for settings. Can't see it? A full menu bar, the notch or a menu bar manager can hide it."),
@@ -202,9 +209,11 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         let separator = NSBox()
         separator.boxType = .separator
 
+        drawBox.target = self
+        drawBox.action = #selector(toggleDrawing)
         loginBox.target = self
         loginBox.action = #selector(toggleLogin)
-        var checkboxes: [NSView] = [loginBox]
+        var checkboxes: [NSView] = [drawBox, loginBox]
         #if !APPSTORE
         updatesBox.target = self
         updatesBox.action = #selector(toggleUpdates)

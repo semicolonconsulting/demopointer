@@ -48,6 +48,12 @@ final class Settings {
         set { defaults.set(newValue, forKey: "diameter") }
     }
 
+    /// Draw on the screen while ⌥ Option is held by itself; ⌃ Control clears it.
+    var drawsWithOption: Bool {
+        get { defaults.object(forKey: "drawsWithOption") as? Bool ?? true }
+        set { defaults.set(newValue, forKey: "drawsWithOption") }
+    }
+
     /// Opacity of the shade over the rest of the screen; 0 is off.
     var shadeOpacity: Double {
         get { defaults.object(forKey: "shadeOpacity") as? Double ?? 0.25 }

@@ -18,6 +18,8 @@ final class MagnifierController: NSObject {
     private let lens = LensWindow()
     private let shade = ShadeWindows()
     private let cursor = CursorHider()
+    private let drawing = DrawingOverlay()
+    private var wasControlDown = false
     private let ciContext = CIContext(options: [.cacheIntermediates: false])
 
     /// Screenshot mode, for App Store screenshots: the lens stays up as if ⌘ were held. Turned on only by
@@ -33,6 +35,8 @@ final class MagnifierController: NSObject {
     var onCaptureFailure: ((Error) -> Void)?
 
     func start() {
+        // New overlay windows need a fresh capture filter to show up in the lens.
+        drawing.onWindowsChanged = { [weak self] in self?.stopCapture() }
         let timer = Timer(timeInterval: 1.0 / 60.0, target: self, selector: #selector(tick), userInfo: nil, repeats: true)
         RunLoop.main.add(timer, forMode: .common)
         self.timer = timer
@@ -40,6 +44,7 @@ final class MagnifierController: NSObject {
 
     @objc private func tick() {
         let flags = NSEvent.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        updateDrawing(flags: flags)
         // Only plain Command, so shortcuts like Cmd+Shift+4 don't pop the lens.
         let held = screenshotMode || (settings.isEnabled
             && flags.contains(.command)
@@ -77,6 +82,24 @@ final class MagnifierController: NSObject {
         shade.show(opacity: CGFloat(settings.shadeOpacity))
         lens.show(image: image)
         cursor.hide()
+    }
+
+    /// Holding ⌥ Option by itself draws a line behind the pointer; pressing ⌃ Control clears the drawing.
+    private func updateDrawing(flags: NSEvent.ModifierFlags) {
+        let controlDown = flags.contains(.control)
+        if controlDown && !wasControlDown {
+            drawing.clear()
+        }
+        wasControlDown = controlDown
+
+        let pen = !screenshotMode && settings.isEnabled && settings.drawsWithOption
+            && flags.contains(.option)
+            && flags.isDisjoint(with: [.command, .shift, .control])
+        if pen {
+            drawing.add(NSEvent.mouseLocation)
+        } else {
+            drawing.endStroke()
+        }
     }
 
     /// Crops the region under the cursor out of the captured display frame, scales it up to the lens size
@@ -246,11 +269,12 @@ final class MagnifierController: NSObject {
 
         capturingDisplayID = displayID
         let capturer = self.capturer
+        let windowIDs = drawing.windowIDs
         let previous = captureTask
         captureTask = Task {
             await previous?.value
             do {
-                try await capturer.start(displayID: displayID, scale: scale)
+                try await capturer.start(displayID: displayID, scale: scale, includedWindowIDs: windowIDs)
             } catch {
                 self.captureFailed(error, displayID: displayID)
             }
