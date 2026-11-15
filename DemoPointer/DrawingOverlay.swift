@@ -1,8 +1,8 @@
 import AppKit
 import QuartzCore
 
-/// Pen strokes drawn over the whole screen: while ⌥ Option is held by itself, the pointer leaves a line
-/// behind it. The strokes stay until they're cleared.
+/// Pen strokes and arrows drawn over the whole screen: while ⌥ Option is held by itself, the pointer leaves
+/// a line behind it; with ⇧ Shift added, it pulls out an arrow instead. They stay until they're cleared.
 ///
 /// One click-through window per screen, below the shade and the lens, so the shade dims the drawing and
 /// the lens magnifies it. Points are in global screen coordinates (bottom-left origin), so a stroke can
@@ -26,9 +26,12 @@ final class DrawingOverlay {
     /// Finished strokes, kept as one path.
     private var finishedPath = CGMutablePath()
     private var currentPoints: [CGPoint] = []
+    /// The arrow being drawn: from where it started to the pointer.
+    private var arrowStart: CGPoint?
+    private var arrowEnd: CGPoint?
     private var isShown = false
 
-    var isEmpty: Bool { finishedPath.isEmpty && currentPoints.count < 2 }
+    var isEmpty: Bool { finishedPath.isEmpty && currentPoints.count < 2 && currentArrow == nil }
 
     /// The overlay's window numbers, so the capture can include them even though it leaves out the rest of
     /// Demo Pointer's windows.
@@ -66,8 +69,32 @@ final class DrawingOverlay {
         if isEmpty { hide() }
     }
 
+    /// Stretches the current arrow from where it started to the pointer, starting one if needed.
+    func arrow(to point: CGPoint) {
+        if arrowStart == nil { arrowStart = point }
+        arrowEnd = point
+        guard let arrow = currentArrow else { return }
+        show()
+        setPath(arrow, on: \.current)
+    }
+
+    /// Leaves the current arrow where it is. A press without any movement leaves nothing behind.
+    func endArrow() {
+        guard arrowStart != nil else { return }
+        if let arrow = currentArrow {
+            finishedPath.addPath(arrow)
+            setPath(finishedPath, on: \.finished)
+        }
+        arrowStart = nil
+        arrowEnd = nil
+        setPath(nil, on: \.current)
+        if isEmpty { hide() }
+    }
+
     func clear() {
         currentPoints = []
+        arrowStart = nil
+        arrowEnd = nil
         finishedPath = CGMutablePath()
         setPath(nil, on: \.finished)
         setPath(nil, on: \.current)
@@ -90,6 +117,27 @@ final class DrawingOverlay {
             path.addQuadCurve(to: CGPoint(x: (point.x + next.x) / 2, y: (point.y + next.y) / 2), control: point)
         }
         path.addLine(to: points[points.count - 1])
+        return path
+    }
+
+    /// The current arrow, once it's long enough to tell which way it points.
+    private var currentArrow: CGPath? {
+        guard let start = arrowStart, let end = arrowEnd,
+              hypot(end.x - start.x, end.y - start.y) >= 6 else { return nil }
+        return Self.arrowPath(from: start, to: end)
+    }
+
+    /// A line with an open arrowhead at `end`.
+    private static func arrowPath(from start: CGPoint, to end: CGPoint) -> CGPath {
+        let angle = atan2(end.y - start.y, end.x - start.x)
+        let length = min(22, hypot(end.x - start.x, end.y - start.y) * 0.6)
+        let spread = CGFloat.pi / 7
+        let path = CGMutablePath()
+        path.move(to: start)
+        path.addLine(to: end)
+        path.move(to: CGPoint(x: end.x - length * cos(angle - spread), y: end.y - length * sin(angle - spread)))
+        path.addLine(to: end)
+        path.addLine(to: CGPoint(x: end.x - length * cos(angle + spread), y: end.y - length * sin(angle + spread)))
         return path
     }
 
@@ -144,7 +192,7 @@ final class DrawingOverlay {
             return Surface(window: window, origin: screen.frame.origin, finished: finished, current: current)
         }
         setPath(finishedPath.isEmpty ? nil : finishedPath, on: \.finished)
-        setPath(currentPoints.count >= 2 ? Self.smoothPath(currentPoints) : nil, on: \.current)
+        setPath(currentArrow ?? (currentPoints.count >= 2 ? Self.smoothPath(currentPoints) : nil), on: \.current)
     }
 
     private static func strokeLayer(scale: CGFloat) -> CAShapeLayer {

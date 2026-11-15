@@ -171,7 +171,7 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
                 + "It shows up in screen shares and recordings too."),
             (symbol("scribble"),
              "Hold the ⌥ Option key by itself and move the pointer to draw on the screen. "
-                + "Press ⌃ Control to clear the drawing."),
+                + "Add ⇧ Shift to draw an arrow. Press ⌃ Control to clear the drawing."),
             (symbol("menubar.rectangle"),
              "Click the Demo Pointer icon in the menu bar to turn it on or off: the circle is filled while it's on. "
                 + "Right-click it for settings. Can't see it? A full menu bar, the notch or a menu bar manager can hide it."),

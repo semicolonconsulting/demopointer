@@ -84,7 +84,8 @@ final class MagnifierController: NSObject {
         cursor.hide()
     }
 
-    /// Holding ⌥ Option by itself draws a line behind the pointer; pressing ⌃ Control clears the drawing.
+    /// Holding ⌥ Option by itself draws a line behind the pointer, ⌥⇧ draws an arrow, and pressing
+    /// ⌃ Control clears the drawing.
     private func updateDrawing(flags: NSEvent.ModifierFlags) {
         let controlDown = flags.contains(.control)
         if controlDown && !wasControlDown {
@@ -92,14 +93,16 @@ final class MagnifierController: NSObject {
         }
         wasControlDown = controlDown
 
-        let pen = !screenshotMode && settings.isEnabled && settings.drawsWithOption
+        let drawingKeys = !screenshotMode && settings.isEnabled && settings.drawsWithOption
             && flags.contains(.option)
-            && flags.isDisjoint(with: [.command, .shift, .control])
-        if pen {
-            drawing.add(NSEvent.mouseLocation)
-        } else {
-            drawing.endStroke()
-        }
+            && flags.isDisjoint(with: [.command, .control])
+        // ⌥ alone draws freehand; ⌥⇧ pulls out an arrow from where ⇧ went down.
+        let pen = drawingKeys && !flags.contains(.shift)
+        let arrow = drawingKeys && flags.contains(.shift)
+        if !pen { drawing.endStroke() }
+        if !arrow { drawing.endArrow() }
+        if pen { drawing.add(NSEvent.mouseLocation) }
+        if arrow { drawing.arrow(to: NSEvent.mouseLocation) }
     }
 
     /// Crops the region under the cursor out of the captured display frame, scales it up to the lens size
