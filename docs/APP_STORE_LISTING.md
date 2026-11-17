@@ -50,7 +50,7 @@ of App Store Connect, including unreleased apps, so creating the app record is t
 > • Real-time magnifying lens that follows the pointer, at up to 60 frames per second
 > • Zoom 1.5×, 2×, 3× or 4×, with a small, medium or large lens
 > • Screen shade: Off, Light, Medium or Dark
-> • Draw on the screen: hold Option (⌥) and move the pointer to draw, add Shift (⇧) for an arrow, press Control (⌃) to clear
+> • Draw on the screen: hold Option (⌥) and move the pointer to draw, add Shift (⇧) for an arrow, press Control (⌃) to clear, in a pen colour of your choice
 > • Only plain ⌘ shows the lens, so shortcuts like ⌘C or ⌘⇧4 don't get in the way
 > • Click the menu bar icon to turn Demo Pointer on or off; right-click it for settings
 > • Works across multiple displays
@@ -67,6 +67,12 @@ of App Store Connect, including unreleased apps, so creating the app record is t
 magnifier,zoom,presentation,screen share,spotlight,cursor,highlight,lens,webinar,teaching,tutorial
 ```
 [98] Don't repeat words already in the name or subtitle ("demo", "pointer", "magnify" is covered by "magnifier").
+
+## What's New (version 1.1.1)
+
+> • Pick a pen colour for drawing and arrows: red, orange, yellow, green, blue, purple, pink, white or black.
+> • The pointer now stays visible while you magnify.
+> • A clearer Settings window, with each setting next to the key it belongs to.
 
 ## What's New (version 1.1.0)
 
@@ -101,7 +107,7 @@ Notes for the reviewer (paste into "Notes"):
 > 3. Click "Reopen Demo Pointer" in the welcome window (macOS applies the permission after a restart).
 > 4. Hold ⌘ by itself over any window: the lens appears and follows the pointer.
 > 5. Hold Option (⌥) by itself and move the pointer: a red line is drawn on the screen. Hold Option and Shift (⌥⇧) and move the pointer to draw an arrow. Press Control (⌃) to clear the drawing. Drawing needs no extra permission.
-> 6. Click the menu bar icon (a ring with a pointing hand) to turn Demo Pointer off or on. Right-click it for Zoom, Lens Size, Shade Screen, Draw While Holding ⌥, Open at Login and Quit.
+> 6. Click the menu bar icon (a ring with a pointing hand) to turn Demo Pointer off or on. Right-click it for Zoom, Lens Size, Shade Screen, Draw While Holding ⌥, Pen Color, Open at Login and Quit.
 >
 > Open at Login is off by default and only turned on by the user, from the welcome window or the menu.
 
