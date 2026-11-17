@@ -373,7 +373,7 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         let font = NSFont.systemFont(ofSize: NSFont.systemFontSize)
         let leading = NSLayoutManager().defaultLineHeight(for: font) - font.ascender + font.descender
         // The symbol image has some padding above the glyph, which takes up most of the gap already.
-        let gap = (font.ascender - font.capHeight + leading / 2).rounded() - 6
+        let gap = (font.ascender - font.capHeight + leading / 2).rounded() - 8
         let symbolHeight = symbolImage("exclamationmark.triangle.fill").size.height
         imageView.imageScaling = .scaleNone
         imageView.imageAlignment = .alignBottom
