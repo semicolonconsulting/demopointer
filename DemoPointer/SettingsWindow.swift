@@ -367,17 +367,15 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
             .withSymbolConfiguration(.init(pointSize: 18, weight: .regular))!
     }
 
-    /// Lines an icon's top up with the top of the capital letters in the first line of text next to it, in a
-    /// top-aligned row: the image view is the symbol's height plus that gap, with the symbol at its bottom.
+    /// Makes an icon exactly one line of body text tall, so in a top-aligned row its symbol is centred on
+    /// the first line of the text next to it rather than poking above it.
     private static func alignWithFirstLine(_ imageView: NSImageView) {
-        let font = NSFont.systemFont(ofSize: NSFont.systemFontSize)
-        let leading = NSLayoutManager().defaultLineHeight(for: font) - font.ascender + font.descender
-        // The symbol image has some padding above the glyph, which takes up most of the gap already.
-        let gap = (font.ascender - font.capHeight + leading / 2).rounded() - 6
-        let symbolHeight = symbolImage("exclamationmark.triangle.fill").size.height
+        let lineHeight = NSLayoutManager().defaultLineHeight(for: .systemFont(ofSize: NSFont.systemFontSize))
         imageView.imageScaling = .scaleNone
-        imageView.imageAlignment = .alignBottom
-        imageView.heightAnchor.constraint(equalToConstant: (symbolHeight + gap).rounded()).isActive = true
+        imageView.imageAlignment = .alignCenter
+        imageView.heightAnchor.constraint(equalToConstant: lineHeight.rounded()).isActive = true
+        // The symbol is taller than the line; let it spill over evenly above and below.
+        imageView.clipsToBounds = false
     }
 
     private func step(_ image: NSImage, _ text: String, width: CGFloat) -> NSView {
