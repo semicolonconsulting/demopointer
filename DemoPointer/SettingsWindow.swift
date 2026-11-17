@@ -212,10 +212,14 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         let lens = NSStackView(views: [label("Zoom:"), zoomPopUp, label("Lens size:"), sizePopUp,
                                        label("Shade:"), shadePopUp])
         lens.spacing = 8
-        lens.setCustomSpacing(20, after: zoomPopUp)
-        lens.setCustomSpacing(20, after: sizePopUp)
+        lens.setCustomSpacing(14, after: zoomPopUp)
+        lens.setCustomSpacing(14, after: sizePopUp)
         let pen = NSStackView(views: [label("Pen color:"), penPopUp])
         pen.spacing = 8
+        // Each row of settings sits under the step it belongs to, lined up with the step's text.
+        for row in [lens, pen] {
+            row.edgeInsets = NSEdgeInsets(top: 0, left: 36, bottom: 0, right: 0)
+        }
 
         let separator = NSBox()
         separator.boxType = .separator
@@ -256,10 +260,12 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
                                                color: .secondaryLabelColor), privacy])
         footer.spacing = 4
 
-        let stack = NSStackView(views: [header] + steps + [permission, lens, pen, separator, controls, footer])
+        let stack = NSStackView(views: [header, steps[0], lens, steps[1], pen, steps[2], permission, separator, controls, footer])
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 18
+        stack.setCustomSpacing(10, after: steps[0])
+        stack.setCustomSpacing(10, after: steps[1])
         stack.edgeInsets = NSEdgeInsets(top: inset, left: inset, bottom: 20, right: inset)
         stack.widthAnchor.constraint(equalToConstant: width).isActive = true
         for row in [separator, controls] {
