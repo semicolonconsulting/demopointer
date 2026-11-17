@@ -14,6 +14,7 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
     private let zoomPopUp = NSPopUpButton()
     private let sizePopUp = NSPopUpButton()
     private let shadePopUp = NSPopUpButton()
+    private let penPopUp = NSPopUpButton()
     private let drawBox = NSButton(checkboxWithTitle: "Draw While Holding ⌥ Option", target: nil, action: nil)
     private let loginBox = NSButton(checkboxWithTitle: "Open at Login", target: nil, action: nil)
     #if !APPSTORE
@@ -69,6 +70,7 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         sizePopUp.selectItem(at: Settings.sizes.firstIndex { $0.diameter == settings.diameter } ?? 1)
         shadePopUp.selectItem(at: Settings.shades.firstIndex { $0.opacity == settings.shadeOpacity } ?? 1)
         drawBox.state = settings.drawsWithOption ? .on : .off
+        penPopUp.selectItem(at: Settings.penColors.firstIndex { $0.name == settings.penColorName } ?? 0)
         loginBox.state = LoginItem.isEnabled ? .on : .off
         #if !APPSTORE
         updatesBox.state = Updates.checksAutomatically ? .on : .off
@@ -106,6 +108,7 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
     @objc private func selectShade() { settings.shadeOpacity = Settings.shades[shadePopUp.indexOfSelectedItem].opacity }
 
     @objc private func toggleDrawing() { settings.drawsWithOption = drawBox.state == .on }
+    @objc private func selectPenColor() { settings.penColorName = Settings.penColors[penPopUp.indexOfSelectedItem].name }
 
     @objc private func toggleLogin() {
         LoginItem.set(loginBox.state == .on)
@@ -200,11 +203,19 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         shadePopUp.addItems(withTitles: Settings.shades.map(\.name))
         shadePopUp.target = self
         shadePopUp.action = #selector(selectShade)
+        for pen in Settings.penColors {
+            penPopUp.addItem(withTitle: pen.name)
+            penPopUp.lastItem?.image = Settings.swatch(pen.color)
+        }
+        penPopUp.target = self
+        penPopUp.action = #selector(selectPenColor)
         let lens = NSStackView(views: [label("Zoom:"), zoomPopUp, label("Lens size:"), sizePopUp,
                                        label("Shade:"), shadePopUp])
         lens.spacing = 8
         lens.setCustomSpacing(20, after: zoomPopUp)
         lens.setCustomSpacing(20, after: sizePopUp)
+        let pen = NSStackView(views: [label("Pen color:"), penPopUp])
+        pen.spacing = 8
 
         let separator = NSBox()
         separator.boxType = .separator
@@ -245,7 +256,7 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
                                                color: .secondaryLabelColor), privacy])
         footer.spacing = 4
 
-        let stack = NSStackView(views: [header] + steps + [permission, lens, separator, controls, footer])
+        let stack = NSStackView(views: [header] + steps + [permission, lens, pen, separator, controls, footer])
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 18

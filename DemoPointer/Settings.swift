@@ -1,4 +1,4 @@
-import Foundation
+import AppKit
 
 /// User preferences, persisted in UserDefaults.
 final class Settings {
@@ -16,6 +16,19 @@ final class Settings {
         ("Light", 0.25),
         ("Medium", 0.45),
         ("Dark", 0.65),
+    ]
+
+    /// Pen colours for drawing and arrows.
+    static let penColors: [(name: String, color: NSColor)] = [
+        ("Red", .systemRed),
+        ("Orange", .systemOrange),
+        ("Yellow", .systemYellow),
+        ("Green", .systemGreen),
+        ("Blue", .systemBlue),
+        ("Purple", .systemPurple),
+        ("Pink", .systemPink),
+        ("White", .white),
+        ("Black", .black),
     ]
 
     private let defaults = UserDefaults.standard
@@ -54,6 +67,17 @@ final class Settings {
         set { defaults.set(newValue, forKey: "drawsWithOption") }
     }
 
+    /// Name of the pen colour, one of `penColors`.
+    var penColorName: String {
+        get {
+            let name = defaults.string(forKey: "penColor") ?? ""
+            return Self.penColors.contains { $0.name == name } ? name : "Red"
+        }
+        set { defaults.set(newValue, forKey: "penColor") }
+    }
+
+    var penColor: NSColor { Self.penColors.first { $0.name == penColorName }?.color ?? .systemRed }
+
     /// Opacity of the shade over the rest of the screen; 0 is off.
     var shadeOpacity: Double {
         get { defaults.object(forKey: "shadeOpacity") as? Double ?? 0.25 }
@@ -62,6 +86,19 @@ final class Settings {
 }
 
 extension Settings {
+    /// A round swatch of a pen colour, for menus and pop-up buttons.
+    static func swatch(_ color: NSColor) -> NSImage {
+        NSImage(size: NSSize(width: 12, height: 12), flipped: false) { rect in
+            let circle = NSBezierPath(ovalIn: rect.insetBy(dx: 0.5, dy: 0.5))
+            color.setFill()
+            circle.fill()
+            NSColor.separatorColor.setStroke()
+            circle.lineWidth = 1
+            circle.stroke()
+            return true
+        }
+    }
+
     /// "2×", "1.5×".
     static func format(zoom: Double) -> String {
         zoom == zoom.rounded() ? "\(Int(zoom))×" : "\(zoom)×"

@@ -101,6 +101,7 @@ final class MagnifierController: NSObject {
         let arrow = drawingKeys && flags.contains(.shift)
         if !pen { drawing.endStroke() }
         if !arrow { drawing.endArrow() }
+        if pen || arrow { drawing.color = settings.penColor }
         if pen { drawing.add(NSEvent.mouseLocation) }
         if arrow { drawing.arrow(to: NSEvent.mouseLocation) }
     }
