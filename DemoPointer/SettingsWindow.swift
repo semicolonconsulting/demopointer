@@ -14,7 +14,18 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
     private let zoomPopUp = NSPopUpButton()
     private let sizePopUp = NSPopUpButton()
     private let shadePopUp = NSPopUpButton()
-    private let penPopUp = NSPopUpButton()
+    /// One round button per pen colour; the chosen one has a ring around it.
+    private let penDots: [NSButton] = Settings.penColors.map { pen in
+        let button = NSButton(title: "", target: nil, action: nil)
+        button.isBordered = false
+        button.imagePosition = .imageOnly
+        button.setButtonType(.momentaryChange)
+        button.toolTip = pen.name
+        button.setAccessibilityLabel("\(pen.name) pen")
+        button.widthAnchor.constraint(equalToConstant: 24).isActive = true
+        button.heightAnchor.constraint(equalToConstant: 24).isActive = true
+        return button
+    }
     private let drawBox = NSButton(checkboxWithTitle: "Draw While Holding ⌥ Option", target: nil, action: nil)
     private let loginBox = NSButton(checkboxWithTitle: "Open at Login", target: nil, action: nil)
     #if !APPSTORE
@@ -70,7 +81,11 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         sizePopUp.selectItem(at: Settings.sizes.firstIndex { $0.diameter == settings.diameter } ?? 1)
         shadePopUp.selectItem(at: Settings.shades.firstIndex { $0.opacity == settings.shadeOpacity } ?? 1)
         drawBox.state = settings.drawsWithOption ? .on : .off
-        penPopUp.selectItem(at: Settings.penColors.firstIndex { $0.name == settings.penColorName } ?? 0)
+        for (button, pen) in zip(penDots, Settings.penColors) {
+            let selected = pen.name == settings.penColorName
+            button.image = Self.dot(pen.color, selected: selected)
+            button.setAccessibilityValue(selected ? "selected" : nil)
+        }
         loginBox.state = LoginItem.isEnabled ? .on : .off
         #if !APPSTORE
         updatesBox.state = Updates.checksAutomatically ? .on : .off
@@ -108,7 +123,30 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
     @objc private func selectShade() { settings.shadeOpacity = Settings.shades[shadePopUp.indexOfSelectedItem].opacity }
 
     @objc private func toggleDrawing() { settings.drawsWithOption = drawBox.state == .on }
-    @objc private func selectPenColor() { settings.penColorName = Settings.penColors[penPopUp.indexOfSelectedItem].name }
+    @objc private func selectPenColor(_ sender: NSButton) {
+        guard let index = penDots.firstIndex(of: sender) else { return }
+        settings.penColorName = Settings.penColors[index].name
+        update()
+    }
+
+    /// A 24 pt colour dot, with a ring in the accent colour when it's the chosen pen.
+    private static func dot(_ color: NSColor, selected: Bool) -> NSImage {
+        NSImage(size: NSSize(width: 24, height: 24), flipped: false) { rect in
+            if selected {
+                let ring = NSBezierPath(ovalIn: rect.insetBy(dx: 1.5, dy: 1.5))
+                ring.lineWidth = 2
+                NSColor.controlAccentColor.setStroke()
+                ring.stroke()
+            }
+            let circle = NSBezierPath(ovalIn: rect.insetBy(dx: 5, dy: 5))
+            color.setFill()
+            circle.fill()
+            NSColor.separatorColor.setStroke()
+            circle.lineWidth = 1
+            circle.stroke()
+            return true
+        }
+    }
 
     @objc private func toggleLogin() {
         LoginItem.set(loginBox.state == .on)
@@ -203,18 +241,18 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         shadePopUp.addItems(withTitles: Settings.shades.map(\.name))
         shadePopUp.target = self
         shadePopUp.action = #selector(selectShade)
-        for pen in Settings.penColors {
-            penPopUp.addItem(withTitle: pen.name)
-            penPopUp.lastItem?.image = Settings.swatch(pen.color)
+        for button in penDots {
+            button.target = self
+            button.action = #selector(selectPenColor(_:))
         }
-        penPopUp.target = self
-        penPopUp.action = #selector(selectPenColor)
+        let dots = NSStackView(views: penDots)
+        dots.spacing = 4
         let lens = NSStackView(views: [label("Zoom:"), zoomPopUp, label("Lens size:"), sizePopUp,
                                        label("Shade:"), shadePopUp])
         lens.spacing = 8
         lens.setCustomSpacing(14, after: zoomPopUp)
         lens.setCustomSpacing(14, after: sizePopUp)
-        let pen = NSStackView(views: [label("Pen color:"), penPopUp])
+        let pen = NSStackView(views: [label("Pen color:"), dots])
         pen.spacing = 8
         // Each row of settings sits under the step it belongs to, lined up with the step's text.
         for row in [lens, pen] {
