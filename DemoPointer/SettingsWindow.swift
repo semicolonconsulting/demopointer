@@ -29,7 +29,7 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
     private let drawBox = NSButton(checkboxWithTitle: "Draw While Holding ⌥ Option", target: nil, action: nil)
     private let loginBox = NSButton(checkboxWithTitle: "Open at Login", target: nil, action: nil)
     #if !APPSTORE
-    private let hidePointerBox = NSButton(checkboxWithTitle: "Hide Pointer While Magnifying", target: nil, action: nil)
+    private let showPointerBox = NSButton(checkboxWithTitle: "Show Pointer While Magnifying", target: nil, action: nil)
     private let updatesBox = NSButton(checkboxWithTitle: "Check for Updates Automatically", target: nil, action: nil)
     #endif
     private let permissionIcon = NSImageView()
@@ -89,7 +89,7 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         }
         loginBox.state = LoginItem.isEnabled ? .on : .off
         #if !APPSTORE
-        hidePointerBox.state = settings.hidesPointer ? .on : .off
+        showPointerBox.state = settings.showsPointer ? .on : .off
         updatesBox.state = Updates.checksAutomatically ? .on : .off
         #endif
         updatePermission()
@@ -156,7 +156,7 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
     }
 
     #if !APPSTORE
-    @objc private func toggleHidePointer() { settings.hidesPointer = hidePointerBox.state == .on }
+    @objc private func toggleShowPointer() { settings.showsPointer = showPointerBox.state == .on }
     @objc private func toggleUpdates() { Updates.checksAutomatically = updatesBox.state == .on }
     @objc private func checkForUpdates() { Updates.check(userInitiated: true) }
     #endif
@@ -271,9 +271,9 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         loginBox.action = #selector(toggleLogin)
         var checkboxes: [NSView] = [drawBox, loginBox]
         #if !APPSTORE
-        hidePointerBox.target = self
-        hidePointerBox.action = #selector(toggleHidePointer)
-        checkboxes.insert(hidePointerBox, at: 1)
+        showPointerBox.target = self
+        showPointerBox.action = #selector(toggleShowPointer)
+        checkboxes.insert(showPointerBox, at: 1)
         updatesBox.target = self
         updatesBox.action = #selector(toggleUpdates)
         checkboxes.append(updatesBox)

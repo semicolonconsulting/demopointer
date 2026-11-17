@@ -79,10 +79,10 @@ final class MagnifierController: NSObject {
         lens.center(on: mouse)
         shade.show(opacity: CGFloat(settings.shadeOpacity))
         lens.show(image: image)
-        if settings.hidesPointer {
-            cursor.hide()
-        } else {
+        if settings.showsPointer {
             cursor.show()
+        } else {
+            cursor.hide()
         }
     }
 

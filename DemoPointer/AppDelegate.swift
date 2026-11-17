@@ -121,7 +121,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         shadeItem.submenu = shadeMenu
         menu.addItem(shadeItem)
         #if !APPSTORE
-        menu.addItem(item("Hide Pointer While Magnifying", #selector(toggleHidesPointer), on: settings.hidesPointer))
+        menu.addItem(item("Show Pointer While Magnifying", #selector(toggleShowsPointer), on: settings.showsPointer))
         #endif
 
         menu.addItem(.separator())
@@ -156,7 +156,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc private func openPrivacyPolicy() { NSWorkspace.shared.open(privacyPolicyURL) }
 
     #if !APPSTORE
-    @objc private func toggleHidesPointer() { settings.hidesPointer.toggle() }
+    @objc private func toggleShowsPointer() { settings.showsPointer.toggle() }
     @objc private func checkForUpdates() { Updates.check(userInitiated: true) }
     @objc private func toggleAutomaticUpdates() { Updates.checksAutomatically.toggle() }
     #endif

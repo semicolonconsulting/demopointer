@@ -78,11 +78,11 @@ final class Settings {
 
     var penColor: NSColor { Self.penColors.first { $0.name == penColorName }?.color ?? .systemRed }
 
-    /// Hide the mouse pointer while the lens is shown (GitHub build only). Off by default, so the pointer
-    /// stays in view.
-    var hidesPointer: Bool {
-        get { defaults.bool(forKey: "hidesPointer") }
-        set { defaults.set(newValue, forKey: "hidesPointer") }
+    /// Keep the mouse pointer visible while the lens is shown. On by default; turning it off hides the pointer
+    /// (GitHub build only).
+    var showsPointer: Bool {
+        get { defaults.object(forKey: "showsPointer") as? Bool ?? true }
+        set { defaults.set(newValue, forKey: "showsPointer") }
     }
 
     /// Opacity of the shade over the rest of the screen; 0 is off.
