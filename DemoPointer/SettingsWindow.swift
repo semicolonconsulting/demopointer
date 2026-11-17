@@ -313,7 +313,16 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
                                                color: .secondaryLabelColor), privacy])
         footer.spacing = 4
 
-        let stack = NSStackView(views: [header, steps[2], permission, steps[0], magnifySettings, steps[1], drawSettings, separator, controls, footer])
+        // Lines between the sections, with a little more room around them than between rows.
+        let dividers = (0..<3).map { _ -> NSBox in
+            let box = NSBox()
+            box.boxType = .separator
+            box.setContentCompressionResistancePriority(.required, for: .vertical)
+            box.heightAnchor.constraint(equalToConstant: 1).isActive = true
+            return box
+        }
+        let stack = NSStackView(views: [header, steps[2], dividers[0], permission, dividers[1], steps[0], magnifySettings,
+                                        dividers[2], steps[1], drawSettings, separator, controls, footer])
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 18
@@ -321,7 +330,13 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         stack.setCustomSpacing(10, after: steps[1])
         stack.edgeInsets = NSEdgeInsets(top: inset, left: inset, bottom: 20, right: inset)
         stack.widthAnchor.constraint(equalToConstant: width).isActive = true
-        for row in [separator, controls] {
+        for divider in dividers {
+            stack.setCustomSpacing(22, after: divider)
+        }
+        for view in [steps[2], permission, magnifySettings] {
+            stack.setCustomSpacing(22, after: view)
+        }
+        for row in [separator, controls] + dividers {
             row.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -inset * 2).isActive = true
         }
 
