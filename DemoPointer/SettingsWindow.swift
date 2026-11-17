@@ -257,23 +257,32 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         lens.setCustomSpacing(14, after: sizePopUp)
         let pen = NSStackView(views: [label("Pen color:"), dots])
         pen.spacing = 8
-        // Each row of settings sits under the step it belongs to, lined up with the step's text.
-        for row in [lens, pen] {
-            row.edgeInsets = NSEdgeInsets(top: 0, left: 36, bottom: 0, right: 0)
+
+        drawBox.target = self
+        drawBox.action = #selector(toggleDrawing)
+        var magnifyRows: [NSView] = [lens]
+        #if !APPSTORE
+        showPointerBox.target = self
+        showPointerBox.action = #selector(toggleShowPointer)
+        magnifyRows.append(showPointerBox)
+        #endif
+        // Each group of settings sits under the step it belongs to, lined up with the step's text.
+        let magnifySettings = NSStackView(views: magnifyRows)
+        let drawSettings = NSStackView(views: [drawBox, pen])
+        for group in [magnifySettings, drawSettings] {
+            group.orientation = .vertical
+            group.alignment = .leading
+            group.spacing = 10
+            group.edgeInsets = NSEdgeInsets(top: 0, left: 36, bottom: 0, right: 0)
         }
 
         let separator = NSBox()
         separator.boxType = .separator
 
-        drawBox.target = self
-        drawBox.action = #selector(toggleDrawing)
         loginBox.target = self
         loginBox.action = #selector(toggleLogin)
-        var checkboxes: [NSView] = [drawBox, loginBox]
+        var checkboxes: [NSView] = [loginBox]
         #if !APPSTORE
-        showPointerBox.target = self
-        showPointerBox.action = #selector(toggleShowPointer)
-        checkboxes.insert(showPointerBox, at: 1)
         updatesBox.target = self
         updatesBox.action = #selector(toggleUpdates)
         checkboxes.append(updatesBox)
@@ -304,7 +313,7 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
                                                color: .secondaryLabelColor), privacy])
         footer.spacing = 4
 
-        let stack = NSStackView(views: [header, permission, steps[0], lens, steps[1], pen, steps[2], separator, controls, footer])
+        let stack = NSStackView(views: [header, permission, steps[0], magnifySettings, steps[1], drawSettings, steps[2], separator, controls, footer])
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 18
