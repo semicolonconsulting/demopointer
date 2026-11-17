@@ -223,6 +223,7 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
 
         permissionText.preferredMaxLayoutWidth = textWidth
         permissionIcon.widthAnchor.constraint(equalToConstant: 24).isActive = true
+        Self.alignWithFirstLine(permissionIcon)
         let openSettings = NSButton(title: "Open System Settings", target: self, action: #selector(openScreenRecordingSettings))
         let reopenButton = NSButton(title: "Reopen Demo Pointer", target: self, action: #selector(reopen))
         permissionButtons.setViews([openSettings, reopenButton], in: .leading)
@@ -364,10 +365,20 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
             .withSymbolConfiguration(.init(pointSize: 15, weight: .regular))!
     }
 
+    /// Makes an icon exactly one line of body text tall, so in a top-aligned row its symbol is centred on
+    /// the first line of the text next to it rather than poking above it.
+    private static func alignWithFirstLine(_ imageView: NSImageView) {
+        let lineHeight = NSLayoutManager().defaultLineHeight(for: .systemFont(ofSize: NSFont.systemFontSize))
+        imageView.imageScaling = .scaleNone
+        imageView.imageAlignment = .alignCenter
+        imageView.heightAnchor.constraint(equalToConstant: lineHeight.rounded()).isActive = true
+    }
+
     private func step(_ image: NSImage, _ text: String, width: CGFloat) -> NSView {
         let imageView = NSImageView(image: image)
         imageView.contentTintColor = .secondaryLabelColor
         imageView.widthAnchor.constraint(equalToConstant: 24).isActive = true
+        Self.alignWithFirstLine(imageView)
         let field = NSTextField(wrappingLabelWithString: text)
         field.preferredMaxLayoutWidth = width
         let row = NSStackView(views: [imageView, field])
