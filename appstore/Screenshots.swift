@@ -30,19 +30,24 @@ enum Screenshots {
             ("1-magnify", "Hold ⌘ to magnify.", "A lens follows your pointer,\nand the rest of the screen dims.", {
                 drawLensScene(dashboard, at: pointer, zoom: 2, diameter: 300, shade: 0.25)
             }),
-            ("2-small-text", "Small details,\nbig and clear.", "Zoom up to 4× on numbers,\ncode or fine print.", {
+            ("2-draw", "Draw on\nthe screen.", "Hold ⌥ to draw, add ⇧ for an arrow,\nand pick a pen color. ⌃ clears it.", {
+                drawDesktop()
+                drawWindow(dashboardWindow, title: "Sales Dashboard", content: drawDashboard)
+                drawPenMarks(around: NSPoint(x: 1028, y: 650)) // the North America revenue figure
+            }),
+            ("3-small-text", "Small details,\nbig and clear.", "Zoom up to 4× on numbers,\ncode or fine print.", {
                 drawLensScene(sheet, at: sheetPointer, zoom: 3, diameter: 340, shade: 0.45)
             }),
-            ("3-screen-share", "Your audience\nsees it too.", "The lens shows up in screen shares\nand recordings.", {
+            ("4-screen-share", "Your audience\nsees it too.", "The lens shows up in screen shares\nand recordings.", {
                 let shared = renderImage { drawLensScene(dashboard, at: pointer, zoom: 2, diameter: 300, shade: 0.25) }
                 drawDesktop()
                 drawWindow(NSRect(x: 500, y: 170, width: 900, height: 560), title: "Weekly Sync", content: { drawCall($0, shared: shared) })
             }),
-            ("4-welcome", "Set up\nin seconds.", "A short guide on first launch\nwalks you through permissions.", {
+            ("5-welcome", "Set up\nin seconds.", "A short guide on first launch\nwalks you through permissions.", {
                 drawDesktop()
-                drawWelcome(appIcon: appIcon, at: NSPoint(x: 620, y: 150))
+                drawWelcome(appIcon: appIcon, left: 620)
             }),
-            ("5-menu", "One click away.", "Turn it on or off from the menu bar.\nRight-click for zoom, size and shade.", {
+            ("6-menu", "One click away.", "Turn it on or off from the menu bar.\nRight-click for zoom, size, shade and pen color.", {
                 drawDesktop()
                 drawWindow(dashboardWindow, title: "Sales Dashboard", content: drawDashboard)
                 drawMenu()
@@ -439,11 +444,50 @@ func drawCall(_ area: NSRect, shared: NSImage) {
     }
 }
 
+// MARK: Drawing
+
+/// What ⌥ and ⌥⇧ leave on screen: a freehand red loop around the figure under the pointer and a blue arrow pointing
+/// at it, drawn like DrawingOverlay does (5 pt round strokes, open arrowhead), with the pointer at the arrow's tip.
+func drawPenMarks(around point: NSPoint) {
+    func stroke(_ path: NSBezierPath, _ color: NSColor) {
+        path.lineWidth = 5
+        path.lineCapStyle = .round
+        path.lineJoinStyle = .round
+        color.setStroke()
+        path.stroke()
+    }
+    // A slightly uneven loop, as a hand would draw it, overshooting where it closes.
+    let loop = NSBezierPath()
+    let steps = 64
+    for i in 0...steps {
+        let t = CGFloat(i) / CGFloat(steps) * (2 * .pi + 0.45) - 0.2
+        let wobble = 1 + 0.05 * sin(t * 3) + 0.03 * cos(t * 5)
+        let p = NSPoint(x: point.x + 66 * wobble * cos(t), y: point.y + 19 * wobble * sin(t))
+        if i == 0 { loop.move(to: p) } else { loop.line(to: p) }
+    }
+    stroke(loop, .systemRed)
+
+    let start = NSPoint(x: point.x - 290, y: point.y - 95), tip = NSPoint(x: point.x - 76, y: point.y - 12)
+    let angle = atan2(tip.y - start.y, tip.x - start.x), head: CGFloat = 22, spread = CGFloat.pi / 7
+    let arrow = NSBezierPath()
+    arrow.move(to: start)
+    arrow.line(to: tip)
+    arrow.move(to: NSPoint(x: tip.x - head * cos(angle - spread), y: tip.y - head * sin(angle - spread)))
+    arrow.line(to: tip)
+    arrow.line(to: NSPoint(x: tip.x - head * cos(angle + spread), y: tip.y - head * sin(angle + spread)))
+    stroke(arrow, .systemBlue)
+
+    let cursor = NSCursor.arrow
+    let size = NSSize(width: 26, height: 26 * cursor.image.size.height / cursor.image.size.width)
+    cursor.image.draw(in: NSRect(x: tip.x - 4, y: tip.y - 4, width: size.width, height: size.height),
+                      from: .zero, operation: .sourceOver, fraction: 1, respectFlipped: true, hints: nil)
+}
+
 // MARK: Welcome window and menu
 
 /// The app's own welcome window, drawn by AppKit inside a hand-drawn window frame.
 @MainActor
-func drawWelcome(appIcon: NSImage, at origin: NSPoint) {
+func drawWelcome(appIcon: NSImage, left: CGFloat) {
     let window = SettingsWindow().preparedWindow()
     let content = window.contentView!
     content.appearance = NSAppearance(named: .aqua)
@@ -460,7 +504,9 @@ func drawWelcome(appIcon: NSImage, at origin: NSPoint) {
     }
     replaceIcon(in: content)
     content.layoutSubtreeIfNeeded()
-    let frame = NSRect(origin: origin, size: NSSize(width: content.bounds.width, height: content.bounds.height + 34))
+    // Centred below the menu bar; the window is nearly as tall as the canvas.
+    let size = NSSize(width: content.bounds.width, height: content.bounds.height + 34)
+    let frame = NSRect(origin: NSPoint(x: left, y: max(34, 26 + (canvas.height - 26 - size.height) / 2)), size: size)
     drawWindow(frame, title: "Welcome to Demo Pointer") { area in
         let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: Int(content.bounds.width * 2), pixelsHigh: Int(content.bounds.height * 2),
                                    bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
@@ -476,7 +522,8 @@ func drawMenu() {
     drawMenuBar(highlightIcon: true)
     let items: [(String, String, Bool, Bool)] = [ // title, shortcut, checked, submenu
         ("Settings…", "⌘,", false, false), ("-", "", false, false),
-        ("Magnify While Holding ⌘", "", true, false), ("-", "", false, false),
+        ("Magnify While Holding ⌘", "", true, false), ("Draw While Holding ⌥", "", true, false), ("Pen Color", "", false, true),
+        ("-", "", false, false),
         ("Zoom", "", false, true), ("Lens Size", "", false, true), ("Shade Screen", "", false, true), ("-", "", false, false),
         ("Open at Login", "", false, false), ("-", "", false, false),
         ("Screen Recording Settings…", "", false, false), ("Privacy Policy", "", false, false), ("-", "", false, false),
