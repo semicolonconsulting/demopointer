@@ -260,7 +260,7 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
                                                color: .secondaryLabelColor), privacy])
         footer.spacing = 4
 
-        let stack = NSStackView(views: [header, steps[0], lens, steps[1], pen, steps[2], permission, separator, controls, footer])
+        let stack = NSStackView(views: [header, permission, steps[0], lens, steps[1], pen, steps[2], separator, controls, footer])
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 18
