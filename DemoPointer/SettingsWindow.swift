@@ -362,7 +362,7 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
 
     private func symbol(_ name: String) -> NSImage {
         NSImage(systemSymbolName: name, accessibilityDescription: nil)!
-            .withSymbolConfiguration(.init(pointSize: 15, weight: .regular))!
+            .withSymbolConfiguration(.init(pointSize: 18, weight: .regular))!
     }
 
     /// Makes an icon exactly one line of body text tall, so in a top-aligned row its symbol is centred on
@@ -372,6 +372,8 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         imageView.imageScaling = .scaleNone
         imageView.imageAlignment = .alignCenter
         imageView.heightAnchor.constraint(equalToConstant: lineHeight.rounded()).isActive = true
+        // The symbol is taller than the line; let it spill over evenly above and below.
+        imageView.clipsToBounds = false
     }
 
     private func step(_ image: NSImage, _ text: String, width: CGFloat) -> NSView {
