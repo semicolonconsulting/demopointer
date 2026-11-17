@@ -360,20 +360,24 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         return field
     }
 
-    private func symbol(_ name: String) -> NSImage {
+    private func symbol(_ name: String) -> NSImage { Self.symbolImage(name) }
+
+    private static func symbolImage(_ name: String) -> NSImage {
         NSImage(systemSymbolName: name, accessibilityDescription: nil)!
             .withSymbolConfiguration(.init(pointSize: 18, weight: .regular))!
     }
 
-    /// Makes an icon exactly one line of body text tall, so in a top-aligned row its symbol is centred on
-    /// the first line of the text next to it rather than poking above it.
+    /// Lines an icon's top up with the top of the capital letters in the first line of text next to it, in a
+    /// top-aligned row: the image view is the symbol's height plus that gap, with the symbol at its bottom.
     private static func alignWithFirstLine(_ imageView: NSImageView) {
-        let lineHeight = NSLayoutManager().defaultLineHeight(for: .systemFont(ofSize: NSFont.systemFontSize))
+        let font = NSFont.systemFont(ofSize: NSFont.systemFontSize)
+        let leading = NSLayoutManager().defaultLineHeight(for: font) - font.ascender + font.descender
+        // The symbol image has some padding above the glyph, which takes up most of the gap already.
+        let gap = (font.ascender - font.capHeight + leading / 2).rounded() - 6
+        let symbolHeight = symbolImage("exclamationmark.triangle.fill").size.height
         imageView.imageScaling = .scaleNone
-        imageView.imageAlignment = .alignCenter
-        imageView.heightAnchor.constraint(equalToConstant: lineHeight.rounded()).isActive = true
-        // The symbol is taller than the line; let it spill over evenly above and below.
-        imageView.clipsToBounds = false
+        imageView.imageAlignment = .alignBottom
+        imageView.heightAnchor.constraint(equalToConstant: (symbolHeight + gap).rounded()).isActive = true
     }
 
     private func step(_ image: NSImage, _ text: String, width: CGFloat) -> NSView {
