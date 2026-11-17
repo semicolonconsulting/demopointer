@@ -21,7 +21,7 @@ Releases are notarized by Apple and open normally. If you received a copy that i
 - While the lens is shown, the mouse pointer is hidden (the lens marks where it is). GitHub version only: it relies on an undocumented macOS setting the App Store doesn't allow.
 - While the lens is shown, the rest of the screen is shaded so the magnified spot stands out. Pick Off, Light (default), Medium or Dark.
 - Works on multiple displays; the lens follows the display the cursor is on.
-- Hold Option (⌥) by itself and move the pointer to draw a red line on the screen. Hold Shift (⇧) too to pull out an arrow from where you pressed it. Press Control (⌃) to clear it. The drawing stays until you clear it, shows up in screen shares, and the lens magnifies it. Pick the colour with **Pen Color** in the menu or Settings (red, orange, yellow, green, blue, purple, pink, white or black). Turn off **Draw While Holding ⌥** in Settings or the menu if you use Option a lot.
+- Hold Option (⌥) by itself and move the pointer to draw a red line on the screen. Hold Shift (⇧) too to pull out an arrow from where you pressed it. Press Control (⌃) to clear it. The drawing stays until you clear it, shows up in screen shares, and stays on top of the lens and the shade. Pick the colour with **Pen Color** in the menu or Settings (red, orange, yellow, green, blue, purple, pink, white or black). Turn off **Draw While Holding ⌥** in Settings or the menu if you use Option a lot.
 
 ## Settings
 

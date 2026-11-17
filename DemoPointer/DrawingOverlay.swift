@@ -4,8 +4,8 @@ import QuartzCore
 /// Pen strokes and arrows drawn over the whole screen: while ⌥ Option is held by itself, the pointer leaves
 /// a line behind it; with ⇧ Shift added, it pulls out an arrow instead. They stay until they're cleared.
 ///
-/// One click-through window per screen, below the shade and the lens, so the shade dims the drawing and
-/// the lens magnifies it. Points are in global screen coordinates (bottom-left origin), so a stroke can
+/// One click-through window per screen, above the shade and the lens, so the drawing stays in full view
+/// while the lens is up. Points are in global screen coordinates (bottom-left origin), so a stroke can
 /// cross from one display to another.
 @MainActor
 final class DrawingOverlay {
@@ -13,9 +13,6 @@ final class DrawingOverlay {
 
     /// The colour for strokes and arrows started from now on. Ones already drawn keep their colour.
     var color = NSColor.systemRed
-
-    /// Called when the windows are rebuilt, so the screen capture can pick up the new ones.
-    var onWindowsChanged: (() -> Void)?
 
     private struct Surface {
         let window: NSWindow
@@ -43,18 +40,11 @@ final class DrawingOverlay {
 
     var isEmpty: Bool { finished.isEmpty && currentPoints.count < 2 && currentArrow == nil }
 
-    /// The overlay's window numbers, so the capture can include them even though it leaves out the rest of
-    /// Demo Pointer's windows.
-    var windowIDs: [CGWindowID] { surfaces.map { CGWindowID($0.window.windowNumber) } }
-
     init() {
         rebuild()
         NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification,
                                                object: nil, queue: .main) { [weak self] _ in
-            MainActor.assumeIsolated {
-                self?.rebuild()
-                self?.onWindowsChanged?()
-            }
+            MainActor.assumeIsolated { self?.rebuild() }
         }
     }
 
@@ -216,8 +206,8 @@ final class DrawingOverlay {
             window.hasShadow = false
             window.ignoresMouseEvents = true
             window.isReleasedWhenClosed = false
-            // Below the shade (screenSaver - 1) and the lens (screenSaver).
-            window.level = NSWindow.Level(rawValue: NSWindow.Level.screenSaver.rawValue - 2)
+            // Above the shade (screenSaver - 1) and the lens (screenSaver).
+            window.level = NSWindow.Level(rawValue: NSWindow.Level.screenSaver.rawValue + 1)
             window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
             window.setFrame(screen.frame, display: false)
 
