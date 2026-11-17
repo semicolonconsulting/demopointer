@@ -14,9 +14,22 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
     private let zoomPopUp = NSPopUpButton()
     private let sizePopUp = NSPopUpButton()
     private let shadePopUp = NSPopUpButton()
+    /// One round button per pen colour; the chosen one has a ring around it.
+    private let penDots: [NSButton] = Settings.penColors.map { pen in
+        let button = NSButton(title: "", target: nil, action: nil)
+        button.isBordered = false
+        button.imagePosition = .imageOnly
+        button.setButtonType(.momentaryChange)
+        button.toolTip = pen.name
+        button.setAccessibilityLabel("\(pen.name) pen")
+        button.widthAnchor.constraint(equalToConstant: 24).isActive = true
+        button.heightAnchor.constraint(equalToConstant: 24).isActive = true
+        return button
+    }
     private let drawBox = NSButton(checkboxWithTitle: "Draw While Holding ⌥ Option", target: nil, action: nil)
     private let loginBox = NSButton(checkboxWithTitle: "Open at Login", target: nil, action: nil)
     #if !APPSTORE
+    private let showPointerBox = NSButton(checkboxWithTitle: "Show Pointer While Magnifying", target: nil, action: nil)
     private let updatesBox = NSButton(checkboxWithTitle: "Check for Updates Automatically", target: nil, action: nil)
     #endif
     private let permissionIcon = NSImageView()
@@ -69,8 +82,14 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         sizePopUp.selectItem(at: Settings.sizes.firstIndex { $0.diameter == settings.diameter } ?? 1)
         shadePopUp.selectItem(at: Settings.shades.firstIndex { $0.opacity == settings.shadeOpacity } ?? 1)
         drawBox.state = settings.drawsWithOption ? .on : .off
+        for (button, pen) in zip(penDots, Settings.penColors) {
+            let selected = pen.name == settings.penColorName
+            button.image = Self.dot(pen.color, selected: selected)
+            button.setAccessibilityValue(selected ? "selected" : nil)
+        }
         loginBox.state = LoginItem.isEnabled ? .on : .off
         #if !APPSTORE
+        showPointerBox.state = settings.showsPointer ? .on : .off
         updatesBox.state = Updates.checksAutomatically ? .on : .off
         #endif
         updatePermission()
@@ -106,6 +125,30 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
     @objc private func selectShade() { settings.shadeOpacity = Settings.shades[shadePopUp.indexOfSelectedItem].opacity }
 
     @objc private func toggleDrawing() { settings.drawsWithOption = drawBox.state == .on }
+    @objc private func selectPenColor(_ sender: NSButton) {
+        guard let index = penDots.firstIndex(of: sender) else { return }
+        settings.penColorName = Settings.penColors[index].name
+        update()
+    }
+
+    /// A 24 pt colour dot, with a ring in the accent colour when it's the chosen pen.
+    private static func dot(_ color: NSColor, selected: Bool) -> NSImage {
+        NSImage(size: NSSize(width: 24, height: 24), flipped: false) { rect in
+            if selected {
+                let ring = NSBezierPath(ovalIn: rect.insetBy(dx: 1.5, dy: 1.5))
+                ring.lineWidth = 2
+                NSColor.controlAccentColor.setStroke()
+                ring.stroke()
+            }
+            let circle = NSBezierPath(ovalIn: rect.insetBy(dx: 5, dy: 5))
+            color.setFill()
+            circle.fill()
+            NSColor.separatorColor.setStroke()
+            circle.lineWidth = 1
+            circle.stroke()
+            return true
+        }
+    }
 
     @objc private func toggleLogin() {
         LoginItem.set(loginBox.state == .on)
@@ -113,6 +156,7 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
     }
 
     #if !APPSTORE
+    @objc private func toggleShowPointer() { settings.showsPointer = showPointerBox.state == .on }
     @objc private func toggleUpdates() { Updates.checksAutomatically = updatesBox.state == .on }
     @objc private func checkForUpdates() { Updates.check(userInitiated: true) }
     #endif
@@ -179,6 +223,7 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
 
         permissionText.preferredMaxLayoutWidth = textWidth
         permissionIcon.widthAnchor.constraint(equalToConstant: 24).isActive = true
+        Self.alignWithFirstLine(permissionIcon)
         let openSettings = NSButton(title: "Open System Settings", target: self, action: #selector(openScreenRecordingSettings))
         let reopenButton = NSButton(title: "Reopen Demo Pointer", target: self, action: #selector(reopen))
         permissionButtons.setViews([openSettings, reopenButton], in: .leading)
@@ -200,20 +245,44 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         shadePopUp.addItems(withTitles: Settings.shades.map(\.name))
         shadePopUp.target = self
         shadePopUp.action = #selector(selectShade)
+        for button in penDots {
+            button.target = self
+            button.action = #selector(selectPenColor(_:))
+        }
+        let dots = NSStackView(views: penDots)
+        dots.spacing = 4
         let lens = NSStackView(views: [label("Zoom:"), zoomPopUp, label("Lens size:"), sizePopUp,
                                        label("Shade:"), shadePopUp])
         lens.spacing = 8
-        lens.setCustomSpacing(20, after: zoomPopUp)
-        lens.setCustomSpacing(20, after: sizePopUp)
+        lens.setCustomSpacing(14, after: zoomPopUp)
+        lens.setCustomSpacing(14, after: sizePopUp)
+        let pen = NSStackView(views: [label("Pen color:"), dots])
+        pen.spacing = 8
+
+        drawBox.target = self
+        drawBox.action = #selector(toggleDrawing)
+        var magnifyRows: [NSView] = [lens]
+        #if !APPSTORE
+        showPointerBox.target = self
+        showPointerBox.action = #selector(toggleShowPointer)
+        magnifyRows.append(showPointerBox)
+        #endif
+        // Each group of settings sits under the step it belongs to, lined up with the step's text.
+        let magnifySettings = NSStackView(views: magnifyRows)
+        let drawSettings = NSStackView(views: [drawBox, pen])
+        for group in [magnifySettings, drawSettings] {
+            group.orientation = .vertical
+            group.alignment = .leading
+            group.spacing = 10
+            group.edgeInsets = NSEdgeInsets(top: 0, left: 36, bottom: 0, right: 0)
+        }
 
         let separator = NSBox()
         separator.boxType = .separator
 
-        drawBox.target = self
-        drawBox.action = #selector(toggleDrawing)
         loginBox.target = self
         loginBox.action = #selector(toggleLogin)
-        var checkboxes: [NSView] = [drawBox, loginBox]
+        var checkboxes: [NSView] = [loginBox]
         #if !APPSTORE
         updatesBox.target = self
         updatesBox.action = #selector(toggleUpdates)
@@ -245,13 +314,30 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
                                                color: .secondaryLabelColor), privacy])
         footer.spacing = 4
 
-        let stack = NSStackView(views: [header] + steps + [permission, lens, separator, controls, footer])
+        // Lines between the sections, with a little more room around them than between rows.
+        let dividers = (0..<3).map { _ -> NSBox in
+            let box = NSBox()
+            box.boxType = .separator
+            box.setContentCompressionResistancePriority(.required, for: .vertical)
+            box.heightAnchor.constraint(equalToConstant: 1).isActive = true
+            return box
+        }
+        let stack = NSStackView(views: [header, steps[2], dividers[0], permission, dividers[1], steps[0], magnifySettings,
+                                        dividers[2], steps[1], drawSettings, separator, controls, footer])
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 18
+        stack.setCustomSpacing(10, after: steps[0])
+        stack.setCustomSpacing(10, after: steps[1])
         stack.edgeInsets = NSEdgeInsets(top: inset, left: inset, bottom: 20, right: inset)
         stack.widthAnchor.constraint(equalToConstant: width).isActive = true
-        for row in [separator, controls] {
+        for divider in dividers {
+            stack.setCustomSpacing(22, after: divider)
+        }
+        for view in [steps[2], permission, magnifySettings] {
+            stack.setCustomSpacing(22, after: view)
+        }
+        for row in [separator, controls] + dividers {
             row.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -inset * 2).isActive = true
         }
 
@@ -274,15 +360,31 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         return field
     }
 
-    private func symbol(_ name: String) -> NSImage {
+    private func symbol(_ name: String) -> NSImage { Self.symbolImage(name) }
+
+    private static func symbolImage(_ name: String) -> NSImage {
         NSImage(systemSymbolName: name, accessibilityDescription: nil)!
-            .withSymbolConfiguration(.init(pointSize: 15, weight: .regular))!
+            .withSymbolConfiguration(.init(pointSize: 18, weight: .regular))!
+    }
+
+    /// Lines an icon's top up with the top of the capital letters in the first line of text next to it, in a
+    /// top-aligned row: the image view is the symbol's height plus that gap, with the symbol at its bottom.
+    private static func alignWithFirstLine(_ imageView: NSImageView) {
+        let font = NSFont.systemFont(ofSize: NSFont.systemFontSize)
+        let leading = NSLayoutManager().defaultLineHeight(for: font) - font.ascender + font.descender
+        // The symbol image has some padding above the glyph, which takes up most of the gap already.
+        let gap = (font.ascender - font.capHeight + leading / 2).rounded() - 6
+        let symbolHeight = symbolImage("exclamationmark.triangle.fill").size.height
+        imageView.imageScaling = .scaleNone
+        imageView.imageAlignment = .alignBottom
+        imageView.heightAnchor.constraint(equalToConstant: (symbolHeight + gap).rounded()).isActive = true
     }
 
     private func step(_ image: NSImage, _ text: String, width: CGFloat) -> NSView {
         let imageView = NSImageView(image: image)
         imageView.contentTintColor = .secondaryLabelColor
         imageView.widthAnchor.constraint(equalToConstant: 24).isActive = true
+        Self.alignWithFirstLine(imageView)
         let field = NSTextField(wrappingLabelWithString: text)
         field.preferredMaxLayoutWidth = width
         let row = NSStackView(views: [imageView, field])

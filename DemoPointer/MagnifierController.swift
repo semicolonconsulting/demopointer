@@ -35,8 +35,6 @@ final class MagnifierController: NSObject {
     var onCaptureFailure: ((Error) -> Void)?
 
     func start() {
-        // New overlay windows need a fresh capture filter to show up in the lens.
-        drawing.onWindowsChanged = { [weak self] in self?.stopCapture() }
         let timer = Timer(timeInterval: 1.0 / 60.0, target: self, selector: #selector(tick), userInfo: nil, repeats: true)
         RunLoop.main.add(timer, forMode: .common)
         self.timer = timer
@@ -81,7 +79,11 @@ final class MagnifierController: NSObject {
         lens.center(on: mouse)
         shade.show(opacity: CGFloat(settings.shadeOpacity))
         lens.show(image: image)
-        cursor.hide()
+        if settings.showsPointer {
+            cursor.show()
+        } else {
+            cursor.hide()
+        }
     }
 
     /// Holding ⌥ Option by itself draws a line behind the pointer, ⌥⇧ draws an arrow, and pressing
@@ -101,6 +103,7 @@ final class MagnifierController: NSObject {
         let arrow = drawingKeys && flags.contains(.shift)
         if !pen { drawing.endStroke() }
         if !arrow { drawing.endArrow() }
+        if pen || arrow { drawing.color = settings.penColor }
         if pen { drawing.add(NSEvent.mouseLocation) }
         if arrow { drawing.arrow(to: NSEvent.mouseLocation) }
     }
@@ -272,12 +275,11 @@ final class MagnifierController: NSObject {
 
         capturingDisplayID = displayID
         let capturer = self.capturer
-        let windowIDs = drawing.windowIDs
         let previous = captureTask
         captureTask = Task {
             await previous?.value
             do {
-                try await capturer.start(displayID: displayID, scale: scale, includedWindowIDs: windowIDs)
+                try await capturer.start(displayID: displayID, scale: scale)
             } catch {
                 self.captureFailed(error, displayID: displayID)
             }

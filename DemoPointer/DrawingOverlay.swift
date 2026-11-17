@@ -4,53 +4,54 @@ import QuartzCore
 /// Pen strokes and arrows drawn over the whole screen: while ⌥ Option is held by itself, the pointer leaves
 /// a line behind it; with ⇧ Shift added, it pulls out an arrow instead. They stay until they're cleared.
 ///
-/// One click-through window per screen, below the shade and the lens, so the shade dims the drawing and
-/// the lens magnifies it. Points are in global screen coordinates (bottom-left origin), so a stroke can
+/// One click-through window per screen, above the shade and the lens, so the drawing stays in full view
+/// while the lens is up. Points are in global screen coordinates (bottom-left origin), so a stroke can
 /// cross from one display to another.
 @MainActor
 final class DrawingOverlay {
     static let lineWidth: CGFloat = 5
-    static let color = NSColor.systemRed
 
-    /// Called when the windows are rebuilt, so the screen capture can pick up the new ones.
-    var onWindowsChanged: (() -> Void)?
+    /// The colour for strokes and arrows started from now on. Ones already drawn keep their colour.
+    var color = NSColor.systemRed
 
     private struct Surface {
         let window: NSWindow
         let origin: CGPoint
-        let finished: CAShapeLayer
+        let scale: CGFloat
+        /// Holds one layer per finished stroke, so each keeps its own colour.
+        let finished: CALayer
         let current: CAShapeLayer
     }
 
+    private struct Stroke {
+        let path: CGPath
+        let color: NSColor
+    }
+
     private var surfaces: [Surface] = []
-    /// Finished strokes, kept as one path.
-    private var finishedPath = CGMutablePath()
+    private var finished: [Stroke] = []
+    /// The colour of the stroke or arrow being drawn, fixed when it starts.
+    private var currentColor = NSColor.systemRed
     private var currentPoints: [CGPoint] = []
     /// The arrow being drawn: from where it started to the pointer.
     private var arrowStart: CGPoint?
     private var arrowEnd: CGPoint?
     private var isShown = false
 
-    var isEmpty: Bool { finishedPath.isEmpty && currentPoints.count < 2 && currentArrow == nil }
-
-    /// The overlay's window numbers, so the capture can include them even though it leaves out the rest of
-    /// Demo Pointer's windows.
-    var windowIDs: [CGWindowID] { surfaces.map { CGWindowID($0.window.windowNumber) } }
+    var isEmpty: Bool { finished.isEmpty && currentPoints.count < 2 && currentArrow == nil }
 
     init() {
         rebuild()
         NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification,
                                                object: nil, queue: .main) { [weak self] _ in
-            MainActor.assumeIsolated {
-                self?.rebuild()
-                self?.onWindowsChanged?()
-            }
+            MainActor.assumeIsolated { self?.rebuild() }
         }
     }
 
     /// Extends the current stroke to the pointer, starting one if needed.
     func add(_ point: CGPoint) {
         if let last = currentPoints.last, hypot(point.x - last.x, point.y - last.y) < 1 { return }
+        if currentPoints.isEmpty { startCurrent() }
         currentPoints.append(point)
         guard currentPoints.count >= 2 else { return }
         show()
@@ -61,8 +62,7 @@ final class DrawingOverlay {
     func endStroke() {
         guard !currentPoints.isEmpty else { return }
         if currentPoints.count >= 2 {
-            finishedPath.addPath(Self.smoothPath(currentPoints))
-            setPath(finishedPath, on: \.finished)
+            addFinished(Self.smoothPath(currentPoints))
         }
         currentPoints = []
         setPath(nil, on: \.current)
@@ -71,7 +71,10 @@ final class DrawingOverlay {
 
     /// Stretches the current arrow from where it started to the pointer, starting one if needed.
     func arrow(to point: CGPoint) {
-        if arrowStart == nil { arrowStart = point }
+        if arrowStart == nil {
+            arrowStart = point
+            startCurrent()
+        }
         arrowEnd = point
         guard let arrow = currentArrow else { return }
         show()
@@ -82,8 +85,7 @@ final class DrawingOverlay {
     func endArrow() {
         guard arrowStart != nil else { return }
         if let arrow = currentArrow {
-            finishedPath.addPath(arrow)
-            setPath(finishedPath, on: \.finished)
+            addFinished(arrow)
         }
         arrowStart = nil
         arrowEnd = nil
@@ -95,13 +97,41 @@ final class DrawingOverlay {
         currentPoints = []
         arrowStart = nil
         arrowEnd = nil
-        finishedPath = CGMutablePath()
-        setPath(nil, on: \.finished)
+        finished = []
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        for surface in surfaces { surface.finished.sublayers = nil }
+        CATransaction.commit()
         setPath(nil, on: \.current)
         hide()
     }
 
     // MARK: Drawing
+
+    /// Fixes the colour of a stroke or arrow as it starts.
+    private func startCurrent() {
+        currentColor = color
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        for surface in surfaces { surface.current.strokeColor = color.cgColor }
+        CATransaction.commit()
+    }
+
+    private func addFinished(_ path: CGPath) {
+        let stroke = Stroke(path: path, color: currentColor)
+        finished.append(stroke)
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        for surface in surfaces { surface.finished.addSublayer(Self.layer(for: stroke, on: surface)) }
+        CATransaction.commit()
+    }
+
+    private static func layer(for stroke: Stroke, on surface: Surface) -> CAShapeLayer {
+        let layer = strokeLayer(scale: surface.scale, color: stroke.color)
+        var shift = CGAffineTransform(translationX: -surface.origin.x, y: -surface.origin.y)
+        layer.path = stroke.path.copy(using: &shift)
+        return layer
+    }
 
     /// A curve through the midpoints of the polled positions, so the line doesn't look jagged.
     private static func smoothPath(_ points: [CGPoint]) -> CGPath {
@@ -142,6 +172,7 @@ final class DrawingOverlay {
     }
 
     private func setPath(_ path: CGPath?, on layer: KeyPath<Surface, CAShapeLayer>) {
+        // Only the current stroke changes in place; finished ones get layers of their own.
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         for surface in surfaces {
@@ -175,27 +206,30 @@ final class DrawingOverlay {
             window.hasShadow = false
             window.ignoresMouseEvents = true
             window.isReleasedWhenClosed = false
-            // Below the shade (screenSaver - 1) and the lens (screenSaver).
-            window.level = NSWindow.Level(rawValue: NSWindow.Level.screenSaver.rawValue - 2)
+            // Above the shade (screenSaver - 1) and the lens (screenSaver).
+            window.level = NSWindow.Level(rawValue: NSWindow.Level.screenSaver.rawValue + 1)
             window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
             window.setFrame(screen.frame, display: false)
 
             let view = NSView(frame: NSRect(origin: .zero, size: screen.frame.size))
             view.wantsLayer = true
             window.contentView = view
-            let finished = Self.strokeLayer(scale: screen.backingScaleFactor)
-            let current = Self.strokeLayer(scale: screen.backingScaleFactor)
-            view.layer?.addSublayer(finished)
+            let finishedLayer = CALayer()
+            finishedLayer.frame = view.bounds
+            let current = Self.strokeLayer(scale: screen.backingScaleFactor, color: currentColor)
+            view.layer?.addSublayer(finishedLayer)
             view.layer?.addSublayer(current)
 
             if isShown { window.orderFrontRegardless() }
-            return Surface(window: window, origin: screen.frame.origin, finished: finished, current: current)
+            let surface = Surface(window: window, origin: screen.frame.origin, scale: screen.backingScaleFactor,
+                                  finished: finishedLayer, current: current)
+            for stroke in finished { finishedLayer.addSublayer(Self.layer(for: stroke, on: surface)) }
+            return surface
         }
-        setPath(finishedPath.isEmpty ? nil : finishedPath, on: \.finished)
         setPath(currentArrow ?? (currentPoints.count >= 2 ? Self.smoothPath(currentPoints) : nil), on: \.current)
     }
 
-    private static func strokeLayer(scale: CGFloat) -> CAShapeLayer {
+    private static func strokeLayer(scale: CGFloat, color: NSColor) -> CAShapeLayer {
         let layer = CAShapeLayer()
         layer.contentsScale = scale
         layer.fillColor = nil

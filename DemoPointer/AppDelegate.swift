@@ -78,6 +78,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         menu.addItem(item("Magnify While Holding ⌘", #selector(toggleEnabled), on: settings.isEnabled))
         menu.addItem(item("Draw While Holding ⌥", #selector(toggleDrawing), on: settings.drawsWithOption))
+        let penMenu = NSMenu()
+        for pen in Settings.penColors {
+            let penItem = item(pen.name, #selector(selectPenColor(_:)), on: pen.name == settings.penColorName)
+            penItem.image = Settings.swatch(pen.color)
+            penItem.representedObject = pen.name
+            penMenu.addItem(penItem)
+        }
+        let penItem = NSMenuItem(title: "Pen Color", action: nil, keyEquivalent: "")
+        penItem.image = Settings.swatch(settings.penColor)
+        penItem.submenu = penMenu
+        menu.addItem(penItem)
         menu.addItem(.separator())
 
         let zoomMenu = NSMenu()
@@ -109,6 +120,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let shadeItem = NSMenuItem(title: "Shade Screen", action: nil, keyEquivalent: "")
         shadeItem.submenu = shadeMenu
         menu.addItem(shadeItem)
+        #if !APPSTORE
+        menu.addItem(item("Show Pointer While Magnifying", #selector(toggleShowsPointer), on: settings.showsPointer))
+        #endif
 
         menu.addItem(.separator())
         menu.addItem(item("Open at Login", #selector(toggleOpenAtLogin), on: LoginItem.isEnabled))
@@ -142,6 +156,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc private func openPrivacyPolicy() { NSWorkspace.shared.open(privacyPolicyURL) }
 
     #if !APPSTORE
+    @objc private func toggleShowsPointer() { settings.showsPointer.toggle() }
     @objc private func checkForUpdates() { Updates.check(userInitiated: true) }
     @objc private func toggleAutomaticUpdates() { Updates.checksAutomatically.toggle() }
     #endif
@@ -154,6 +169,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc private func selectSize(_ sender: NSMenuItem) {
         guard let diameter = sender.representedObject as? Double else { return }
         settings.diameter = diameter
+    }
+
+    @objc private func selectPenColor(_ sender: NSMenuItem) {
+        guard let name = sender.representedObject as? String else { return }
+        settings.penColorName = name
     }
 
     @objc private func selectShade(_ sender: NSMenuItem) {
