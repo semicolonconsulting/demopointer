@@ -79,7 +79,11 @@ final class MagnifierController: NSObject {
         lens.center(on: mouse)
         shade.show(opacity: CGFloat(settings.shadeOpacity))
         lens.show(image: image)
-        cursor.hide()
+        if settings.hidesPointer {
+            cursor.hide()
+        } else {
+            cursor.show()
+        }
     }
 
     /// Holding ⌥ Option by itself draws a line behind the pointer, ⌥⇧ draws an arrow, and pressing

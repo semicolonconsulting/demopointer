@@ -120,6 +120,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let shadeItem = NSMenuItem(title: "Shade Screen", action: nil, keyEquivalent: "")
         shadeItem.submenu = shadeMenu
         menu.addItem(shadeItem)
+        #if !APPSTORE
+        menu.addItem(item("Hide Pointer While Magnifying", #selector(toggleHidesPointer), on: settings.hidesPointer))
+        #endif
 
         menu.addItem(.separator())
         menu.addItem(item("Open at Login", #selector(toggleOpenAtLogin), on: LoginItem.isEnabled))
@@ -153,6 +156,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc private func openPrivacyPolicy() { NSWorkspace.shared.open(privacyPolicyURL) }
 
     #if !APPSTORE
+    @objc private func toggleHidesPointer() { settings.hidesPointer.toggle() }
     @objc private func checkForUpdates() { Updates.check(userInitiated: true) }
     @objc private func toggleAutomaticUpdates() { Updates.checksAutomatically.toggle() }
     #endif
